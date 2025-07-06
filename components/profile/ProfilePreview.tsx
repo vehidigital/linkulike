@@ -1,10 +1,11 @@
 import React from "react"
 import { getColorForUrl, socialPlatforms } from "@/lib/social-icons"
-import { getContrastColor } from "@/lib/color-utils"
+import { getContrastColor, extractFirstColorFromGradient } from "@/lib/color-utils"
 import { SolidLinkButton } from "./SolidLinkButton"
 import { ICON_OPTIONS } from "../dashboard/LinkEditor"
 import { getLinkButtonColors, getLinkIcon } from "@/lib/link-button-utils"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
 
 interface LinkItem {
   icon: string
@@ -19,6 +20,7 @@ interface UserLink {
   icon: string;
   customColor?: string;
   useCustomColor?: boolean;
+  textColorOverride?: 'light' | 'dark';
 }
 type PreviewLink = UserLink | DemoLink
 
@@ -96,63 +98,84 @@ export const ProfilePreview: React.FC<ProfilePreviewProps> = ({ displayName, use
   const bg = buttonStyle === 'gradient'
     ? (theme && theme.startsWith('linear-gradient') ? theme : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)')
     : (theme && !theme.startsWith('linear-gradient') ? theme : '#6366f1')
-  const effectiveTextColor = textColor || getContrastColor(bg)
+  // Für Kontrastfarbe: immer echte Farbe extrahieren
+  const bgColorForContrast = extractFirstColorFromGradient(bg);
+  const effectiveTextColor = textColor || getContrastColor(bgColorForContrast)
+  const footerColor = getContrastColor(bgColorForContrast);
 
   // Logging für Debugging
   console.log('ProfilePreview avatarUrl:', avatarUrl);
 
   return (
     <div
-      className="w-[280px] mx-auto rounded-[2.2rem] shadow-2xl relative overflow-visible animate-fadein flex flex-col items-center justify-start"
+      className="w-[340px] max-w-full rounded-[2.2rem] shadow-2xl mx-auto relative overflow-visible flex flex-col items-center justify-start"
       style={{ aspectRatio: '9/19', background: bg, boxShadow: '0 8px 32px 0 rgba(31,38,135,0.18)', padding: '2.5rem 1.2rem 2rem 1.2rem' }}
     >
-      {/* Avatar - jetzt innerhalb des Cards, zentriert */}
-      <Avatar className="w-20 h-20 mx-auto mb-4 border-4 border-white shadow-lg bg-gray-200">
-        <AvatarImage src={avatarUrl} alt="avatar" />
-        <AvatarFallback>
-          {name.charAt(0).toUpperCase()}
-        </AvatarFallback>
-      </Avatar>
-      {/* Name */}
-      <div className="font-extrabold text-lg mb-1 text-center w-full truncate" style={{ color: effectiveTextColor }}>
-        {name}
-      </div>
-      {/* Username */}
-      <div className="mb-1 opacity-70 text-center w-full text-sm" style={{ color: effectiveTextColor }}>
-        @{uname}
-      </div>
-      {/* Bio */}
-      <div className="text-xs mb-4 opacity-90 text-center w-full line-clamp-2" style={{ color: effectiveTextColor }}>
-        {bioText}
-      </div>
-      {/* Links/Buttons */}
-      <div className="flex flex-col items-center w-full gap-4 max-h-[320px] overflow-y-auto py-2">
-        {showLinks.length > 0 ? showLinks.map((l, i) => {
-          let buttonColors = { backgroundColor: STANDARD_COLOR, textColor: '#fff' };
-          let icon = '';
-          if (isUserLink(l)) {
-            buttonColors = getLinkButtonColors(l, buttonColor || STANDARD_COLOR);
-            icon = getLinkIcon(l, ICON_OPTIONS);
-          }
-          const title = isUserLink(l)
-            ? (l.title && l.title.trim().length > 0 ? l.title : (currentLang === 'de' ? 'Link' : 'Link'))
-            : (l.label || (currentLang === 'de' ? 'Link' : 'Link'))
-          return (
-            <SolidLinkButton key={i} title={title} color={buttonColors.backgroundColor} icon={icon} textColor={buttonColors.textColor} />
-          )
-        }) : (
-          <div className="text-gray-200 text-xs mt-8">{currentLang === 'de' ? 'Füge deine ersten Links hinzu' : 'Add your first links'}</div>
-        )}
-      </div>
-      {/* Hinweis für mehr als 5 Links */}
-      {links && links.length > 5 && (
-        <div className="text-xs text-gray-200 text-center mt-2">
-          +{links.length - 5} weitere Links nicht angezeigt
+      <div className="w-full max-w-md mx-auto space-y-8">
+        {/* Profile Header */}
+        <div className="text-center space-y-4">
+          <Avatar className="w-24 h-24 mx-auto border-4 border-white/20 shadow-lg bg-gray-200">
+            <AvatarImage src={avatarUrl || undefined} alt={name} />
+            <AvatarFallback>
+              <span>{name.charAt(0).toUpperCase()}</span>
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <h1 className="text-2xl font-bold mb-2" style={{ color: effectiveTextColor }}>{name}</h1>
+            <p className="text-sm opacity-80 mb-1" style={{ color: effectiveTextColor }}>@{uname}</p>
+            {bioText && (
+              <p className="text-sm opacity-90 leading-relaxed max-w-sm mx-auto text-center line-clamp-3 break-words" style={{ color: effectiveTextColor, whiteSpace: 'pre-line' }}>{bioText}</p>
+            )}
+          </div>
         </div>
-      )}
-      {/* Footer */}
-      <div className="w-full text-center text-[11px] text-gray-200 pb-2 mt-7 select-none" style={{ letterSpacing: 0.2 }}>
-        Powered by <span className="font-semibold">linkulike</span>
+        {/* Links */}
+        <div className="space-y-3">
+          {showLinks.length > 0 ? showLinks.map((l, i) => {
+            let buttonColors;
+            let icon = '';
+            let textColor;
+            if (isUserLink(l)) {
+              buttonColors = getLinkButtonColors(l, buttonColor || STANDARD_COLOR);
+              icon = getLinkIcon(l, ICON_OPTIONS);
+              textColor = getContrastColor(buttonColors.backgroundColor);
+              if (l.textColorOverride === 'light') textColor = '#fff';
+              else if (l.textColorOverride === 'dark') textColor = '#222';
+            } else {
+              // DemoLink fallback
+              buttonColors = { backgroundColor: STANDARD_COLOR };
+              icon = l.icon;
+              textColor = getContrastColor(buttonColors.backgroundColor);
+            }
+            const title = isUserLink(l)
+              ? (l.title && l.title.trim().length > 0 ? l.title : (currentLang === 'de' ? 'Link' : 'Link'))
+              : (l.label || (currentLang === 'de' ? 'Link' : 'Link'))
+            return (
+              <Button
+                key={i}
+                className="w-full py-4 px-6 rounded-xl font-medium text-left transition-all duration-200 hover:scale-105 hover:shadow-lg flex items-center space-x-3"
+                style={{ backgroundColor: buttonColors.backgroundColor, color: textColor, border: `1px solid ${buttonColors.backgroundColor}` }}
+                type="button"
+              >
+                <span className="text-xl">{icon || '🌐'}</span>
+                <span className="flex-1">{title}</span>
+                <svg className="w-4 h-4 opacity-60" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M18 13V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h7m5-5 3 3m0 0-3 3m3-3H9" /></svg>
+              </Button>
+            )
+          }) : (
+            <div className="text-center py-8 opacity-60">
+              <p>{currentLang === 'de' ? 'Keine Links vorhanden' : 'No links available'}</p>
+            </div>
+          )}
+        </div>
+        {/* Action Buttons */}
+        <div className="flex justify-center space-x-4 pt-4">
+          <button type="button" className="rounded px-4 py-2 flex items-center" style={{ color: footerColor }}><svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" /></svg>Like</button>
+          <button type="button" className="rounded px-4 py-2 flex items-center" style={{ color: footerColor }}><svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v16h16V4H4zm4 4h8v8H8V8z" /></svg>Share</button>
+        </div>
+        {/* Footer */}
+        <div className="text-center text-sm opacity-60" style={{ color: footerColor }}>
+          <p>Powered by Linkulike</p>
+        </div>
       </div>
     </div>
   )

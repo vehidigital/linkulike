@@ -83,4 +83,18 @@ export const MODERN_COLORS = [
 
 export function getRandomModernColor(): string {
   return MODERN_COLORS[Math.floor(Math.random() * MODERN_COLORS.length)]
+}
+
+/**
+ * Extrahiert die erste Farbe aus einem CSS-Gradient-String (z.B. linear-gradient(...)).
+ * Gibt eine Hex- oder RGB-Farbe zurück, oder einen Fallback (#ffffff) bei Fehlern.
+ */
+export function extractFirstColorFromGradient(bg: string): string {
+  if (!bg) return '#ffffff';
+  // Nur Hex oder rgb/rgba
+  if (bg.startsWith('#') || bg.startsWith('rgb')) return bg;
+  // Gradient: linear-gradient(..., #hex ...)
+  const match = bg.match(/#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})|rgb\([^)]*\)/);
+  if (match) return match[0];
+  return '#ffffff';
 } 

@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, Heart, Share2 } from "lucide-react";
 import { getColorForUrl } from "@/lib/social-icons";
-import { getContrastColor } from "@/lib/color-utils";
+import { getContrastColor, extractFirstColorFromGradient } from "@/lib/color-utils";
 
 interface User {
   id: string;
@@ -22,6 +22,7 @@ interface User {
   textColor: string;
   fontFamily: string;
   links: Link[];
+  buttonTextColor?: string;
 }
 
 interface Link {
@@ -34,6 +35,7 @@ interface Link {
   customColor?: string;
   useCustomColor?: boolean;
   clicks: any[];
+  textColorOverride?: string;
 }
 
 interface ProfilePageProps {
@@ -67,9 +69,6 @@ const STANDARD_COLOR = '#6366f1'
 
 export default function ProfilePage({ user }: ProfilePageProps) {
   const [liked, setLiked] = useState(false);
-
-  // Logging für Debugging
-  console.log('ProfilePage user.avatarUrl:', user.avatarUrl, 'user:', user);
 
   const handleLinkClick = async (linkId: string, url: string) => {
     try {
@@ -130,7 +129,10 @@ export default function ProfilePage({ user }: ProfilePageProps) {
 
   function getLinkTextColor(link: Link) {
     const backgroundColor = getButtonColor(link)
-    return getContrastColor(backgroundColor)
+    let textColor = getContrastColor(backgroundColor)
+    if (link.textColorOverride === 'light') textColor = '#fff'
+    else if (link.textColorOverride === 'dark') textColor = '#222'
+    return textColor
   }
 
   const getButtonStyle = () => {
@@ -153,6 +155,10 @@ export default function ProfilePage({ user }: ProfilePageProps) {
     fontFamily: user.fontFamily,
   };
 
+  // Für Kontrastfarbe: immer echte Farbe extrahieren
+  const bgColorForContrast = extractFirstColorFromGradient(user.backgroundGradient || user.backgroundColor);
+  const footerColor = getContrastColor(bgColorForContrast);
+
   const buttonStyle = getButtonStyle();
 
   function getInitial(user: User): string {
@@ -168,24 +174,21 @@ export default function ProfilePage({ user }: ProfilePageProps) {
       className="min-h-screen flex flex-col items-center justify-center px-4 py-8"
       style={containerStyle}
     >
-      <div className="w-full max-w-md mx-auto space-y-8">
+      <div className="w-full max-w-[375px] mx-auto space-y-8">
         {/* Profile Header */}
         <div className="text-center space-y-4">
-          {console.log('ProfilePage user.avatarUrl:', user.avatarUrl, 'user:', user)}
           <Avatar className="w-24 h-24 mx-auto border-4 border-white/20 shadow-lg bg-gray-200">
             <AvatarImage src={user.avatarUrl || undefined} alt={user.displayName || user.username} />
             <AvatarFallback>
-              <span>{getInitial(user) || '?'}</span>
+              <span>{getInitial(user) || '?'} </span>
             </AvatarFallback>
           </Avatar>
           
           <div>
-            <h1 className="text-2xl font-bold mb-2">
-              {user.displayName || user.username}
-            </h1>
-            <p className="text-sm opacity-80 mb-1">@{user.username}</p>
+            <h1 className="text-2xl font-bold mb-2" style={{ color: user.textColor }}>{user.displayName || user.username}</h1>
+            <p className="text-sm opacity-80 mb-1" style={{ color: user.textColor }}>@{user.username}</p>
             {user.bio && (
-              <p className="text-sm opacity-90 leading-relaxed max-w-sm mx-auto">
+              <p className="text-sm opacity-90 leading-relaxed max-w-sm mx-auto text-center line-clamp-3 break-words" style={{ color: user.textColor, whiteSpace: 'pre-line' }}>
                 {user.bio}
               </p>
             )}
@@ -232,10 +235,12 @@ export default function ProfilePage({ user }: ProfilePageProps) {
             variant="ghost"
             size="sm"
             onClick={() => setLiked(!liked)}
-            className="text-white/80 hover:text-white hover:bg-white/10"
+            className="hover:bg-white/10"
+            style={{ color: footerColor }}
           >
             <Heart
               className={`w-5 h-5 mr-2 ${liked ? "fill-red-500 text-red-500" : ""}`}
+              style={{ color: footerColor }}
             />
             {liked ? "Liked" : "Like"}
           </Button>
@@ -244,15 +249,16 @@ export default function ProfilePage({ user }: ProfilePageProps) {
             variant="ghost"
             size="sm"
             onClick={handleShare}
-            className="text-white/80 hover:text-white hover:bg-white/10"
+            className="hover:bg-white/10"
+            style={{ color: footerColor }}
           >
-            <Share2 className="w-5 h-5 mr-2" />
+            <Share2 className="w-5 h-5 mr-2" style={{ color: footerColor }} />
             Share
           </Button>
         </div>
 
         {/* Footer */}
-        <div className="text-center text-sm opacity-60">
+        <div className="text-center text-sm opacity-60" style={{ color: footerColor }}>
           <p>Powered by Linkulike</p>
         </div>
       </div>
