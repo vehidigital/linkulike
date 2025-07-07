@@ -19,6 +19,16 @@ export function middleware(req) {
 
   console.log('[MIDDLEWARE-DEBUG] Final lang:', lang)
 
+  // Weiterleitung: Profilseiten auf Subdomains immer auf Hauptdomain
+  const isProfilePage = /^\/[a-zA-Z0-9_\-]+$/.test(pathname) && !pathname.startsWith('/api') && !pathname.startsWith('/dashboard') && !pathname.startsWith('/login') && !pathname.startsWith('/register');
+  if (
+    (hostname !== 'linkulike.local' && hostname !== '0.0.0.0' && hostname !== 'localhost')
+    && isProfilePage
+  ) {
+    const redirectUrl = `http://linkulike.local:3000${pathname}`;
+    return NextResponse.redirect(redirectUrl, 308);
+  }
+
   return NextResponse.next({
     request: {
       headers: requestHeaders,

@@ -6,6 +6,7 @@ import { ICON_OPTIONS } from "../dashboard/LinkEditor"
 import { getLinkButtonColors, getLinkIcon } from "@/lib/link-button-utils"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import { getTranslations } from '@/lib/i18n'
 
 interface LinkItem {
   icon: string
@@ -62,7 +63,7 @@ const demoBio = {
   en: "Creator, musician & web explorer",
 }
 
-const STANDARD_COLOR = '#6366f1'
+const STANDARD_COLOR = '#f3f4f6'
 
 function isDemoLink(link: PreviewLink): link is DemoLink {
   return 'label' in link
@@ -91,10 +92,11 @@ function getButtonColor(link: UserLink) {
 }
 
 export const ProfilePreview: React.FC<ProfilePreviewProps> = ({ displayName, username, bio, avatarUrl, links, theme, buttonStyle, buttonColor, buttonGradient, currentLang, textColor, placeholders }) => {
+  const t = getTranslations(currentLang);
   const name = displayName || placeholders?.displayName || (currentLang === "de" ? "Max Mustermann" : "Max Example")
   const uname = username || placeholders?.username || (currentLang === "de" ? "maxmustermann" : "maxexample")
-  const bioText = bio || placeholders?.bio || (currentLang === "de" ? "Creator, Musiker & Web-Entdecker" : "Creator, musician & web explorer")
-  const showLinks = links && links.length > 0 ? links.slice(0, 5) : demoLinks[currentLang]
+  const bioText = bio || placeholders?.bio || t.sampleBio
+  const showLinks = links && links.length > 0 ? links.slice(0, 5) : demoLinks[currentLang].map(l => ({ ...l, label: t.sampleLink }))
   const bg = buttonStyle === 'gradient'
     ? (theme && theme.startsWith('linear-gradient') ? theme : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)')
     : (theme && !theme.startsWith('linear-gradient') ? theme : '#6366f1')
@@ -147,8 +149,8 @@ export const ProfilePreview: React.FC<ProfilePreviewProps> = ({ displayName, use
               textColor = getContrastColor(buttonColors.backgroundColor);
             }
             const title = isUserLink(l)
-              ? (l.title && l.title.trim().length > 0 ? l.title : (currentLang === 'de' ? 'Link' : 'Link'))
-              : (l.label || (currentLang === 'de' ? 'Link' : 'Link'))
+              ? (l.title && l.title.trim().length > 0 ? l.title : t.sampleLink)
+              : (l.label || t.sampleLink)
             return (
               <Button
                 key={i}
@@ -163,7 +165,7 @@ export const ProfilePreview: React.FC<ProfilePreviewProps> = ({ displayName, use
             )
           }) : (
             <div className="text-center py-8 opacity-60">
-              <p>{currentLang === 'de' ? 'Keine Links vorhanden' : 'No links available'}</p>
+              <p>{t.sampleLinksNotice}</p>
             </div>
           )}
         </div>

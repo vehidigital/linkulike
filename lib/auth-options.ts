@@ -3,6 +3,8 @@ import CredentialsProvider from "next-auth/providers/credentials"
 import { prisma } from "@/lib/db"
 import bcrypt from "bcryptjs"
 
+const isProd = process.env.NODE_ENV === "production";
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -78,15 +80,15 @@ export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   cookies: {
     sessionToken: {
-      name: process.env.NODE_ENV === "production"
+      name: isProd
         ? "__Secure-next-auth.session-token"
         : "next-auth.session-token",
       options: {
-        domain: ".localhost",
+        domain: isProd ? ".linkulike.com" : ".linkulike.local",
         path: "/",
         httpOnly: true,
         sameSite: "lax",
-        secure: process.env.NODE_ENV === "production",
+        secure: isProd,
       },
     },
   },

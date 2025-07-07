@@ -191,5 +191,8 @@
   "orange": "Orange",
   "pink": "Pink",
   "black": "Schwarz",
-  "gray": "Grau"
+  "gray": "Grau",
+  "sampleLink": "Beispiel-Link",
+  "sampleBio": "Beispiel-Bio-Text",
+  "sampleLinksNotice": "Die untenstehenden Links sind nur Beispiele. Lege eigene Links im Dashboard an!"
 } 

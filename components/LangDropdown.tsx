@@ -23,9 +23,9 @@ export function LangDropdown({ currentLang, pathname }: { currentLang: string, p
     if (typeof window !== 'undefined') {
       const protocol = window.location.protocol
       const path = pathname
-      let newHost = "localhost:3000"
+      let newHost = "linkulike.local:3000"
       if (lang.subdomain) {
-        newHost = `${lang.subdomain}.localhost:3000`
+        newHost = `${lang.subdomain}.linkulike.local:3000`
       }
       window.location.href = `${protocol}//${newHost}${path}`
     }

@@ -285,7 +285,7 @@ export default function Dashboard() {
   console.log('Dashboard editProfile:', editProfile)
   console.log('Dashboard avatarUrl für Preview:', activeTab === 'profile' && editProfile ? editProfile?.avatarUrl : profile.avatarUrl)
 
-  const publicUrl = `${process.env.NEXT_PUBLIC_APP_URL}/${profile.username}`
+  const publicUrl = `http://linkulike.local:3000/${profile.username}`
 
   return (
     <div className="min-h-screen bg-gray-50">

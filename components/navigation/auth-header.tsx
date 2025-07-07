@@ -44,9 +44,9 @@ export default function AuthHeader({ lang }: { lang: "de" | "en" }) {
                     setOpen(false)
                     if (typeof window !== 'undefined') {
                       const protocol = window.location.protocol
-                      let newHost = "localhost:3000"
+                      let newHost = "linkulike.local:3000"
                       if (l.subdomain) {
-                        newHost = `${l.subdomain}.localhost:3000`
+                        newHost = `${l.subdomain}.linkulike.local:3000`
                       }
                       window.location.href = `${protocol}//${newHost}${window.location.pathname}`
                     }

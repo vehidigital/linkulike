@@ -1,14 +1,15 @@
 #!/bin/bash
 
-echo "🔧 Konfiguriere localhost Subdomains..."
+echo "🔧 Konfiguriere lokale Subdomains für linkulike..."
 
-# Check if entry already exists
-if grep -q "de.localhost" /etc/hosts; then
-    echo "✅ Subdomain ist bereits konfiguriert"
+# Check if entries already exist
+if grep -q "linkulike.local" /etc/hosts; then
+    echo "✅ Subdomains sind bereits konfiguriert"
 else
-    echo "📝 Füge Subdomain zur /etc/hosts hinzu..."
-    echo "127.0.0.1 de.localhost" | sudo tee -a /etc/hosts
-    echo "✅ Subdomain hinzugefügt"
+    echo "📝 Füge Subdomains zur /etc/hosts hinzu..."
+    echo "127.0.0.1 linkulike.local" | sudo tee -a /etc/hosts
+    echo "127.0.0.1 de.linkulike.local" | sudo tee -a /etc/hosts
+    echo "✅ Subdomains hinzugefügt"
 fi
 
 # Flush DNS cache
@@ -18,7 +19,7 @@ sudo dscacheutil -flushcache
 echo "🎉 Setup abgeschlossen!"
 echo ""
 echo "Du kannst jetzt folgende URLs verwenden:"
-echo "  🇩🇪 http://de.localhost:3000"
-echo "  🇬🇧 http://localhost:3000"
-echo "  🔗 http://de.localhost:3000/@username"
-echo "  🔗 http://localhost:3000/@username" 
+echo "  🇬🇧 http://linkulike.local:3000"
+echo "  🇩🇪 http://de.linkulike.local:3000"
+echo "  🔗 http://linkulike.local:3000/@username"
+echo "  🔗 http://de.linkulike.local:3000/@username" 

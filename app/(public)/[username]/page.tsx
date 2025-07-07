@@ -71,11 +71,10 @@ export default async function PublicProfilePage({ params }: ProfilePageProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      {/* Language Switcher */}
-      <div className="absolute top-4 right-4 z-50">
+      {/* Language Switcher entfernt */}
+      {/* <div className="absolute top-4 right-4 z-50">
         <LangDropdown currentLang={lang} pathname={`/${username}`} />
-      </div>
-      
+      </div> */}
       {/* Profile Content */}
       <ProfilePage user={user as any} />
     </div>
