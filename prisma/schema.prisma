@@ -26,7 +26,7 @@ model User {
   buttonGradient      String?  @default("linear-gradient(135deg, #667eea 0%, #764ba2 100%)")
   textColor           String?  @default("#ffffff")
   fontFamily          String?  @default("Inter")
-  onboardingCompleted Boolean  @default(false)
+
   isPremium           Boolean  @default(false)
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
@@ -44,6 +44,7 @@ model Link {
   isActive    Boolean  @default(true)
   customColor String?  // Custom color for this specific link
   useCustomColor Boolean @default(false) // Whether to use custom color or auto-detect
+  textColorOverride String? // 'light', 'dark' oder undefined für Button-Textfarbe
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

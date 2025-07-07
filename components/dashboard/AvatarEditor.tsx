@@ -7,29 +7,55 @@ interface AvatarEditorProps {
   onCancel: () => void;
 }
 
-function getCroppedImg(imageSrc: string, crop: any, rotation = 0, zoom = 1): Promise<string> {
+function getRadianAngle(degreeValue: number) {
+  return (degreeValue * Math.PI) / 180;
+}
+
+function getCroppedImg(
+  imageSrc: string,
+  pixelCrop: { x: number; y: number; width: number; height: number },
+  rotation = 0
+): Promise<string> {
   return new Promise((resolve, reject) => {
     const image = new window.Image();
     image.src = imageSrc;
     image.onload = () => {
+      const rad = getRadianAngle(rotation);
+
+      // calculate bounding box of the rotated image
+      const sin = Math.abs(Math.sin(rad));
+      const cos = Math.abs(Math.cos(rad));
+      const newWidth = image.width * cos + image.height * sin;
+      const newHeight = image.width * sin + image.height * cos;
+
+      // create a canvas that will fit the rotated image
       const canvas = document.createElement('canvas');
+      canvas.width = newWidth;
+      canvas.height = newHeight;
       const ctx = canvas.getContext('2d');
       if (!ctx) return reject('No 2d context');
-      const size = Math.min(image.width, image.height);
-      canvas.width = size;
-      canvas.height = size;
-      ctx.save();
-      ctx.translate(size / 2, size / 2);
-      ctx.rotate((rotation * Math.PI) / 180);
-      ctx.scale(zoom, zoom);
-      ctx.drawImage(
-        image,
-        -image.width / 2,
-        -image.height / 2
+
+      // move the origin to the center of the canvas
+      ctx.translate(newWidth / 2, newHeight / 2);
+      ctx.rotate(rad);
+      ctx.drawImage(image, -image.width / 2, -image.height / 2);
+
+      // get the cropped image from the rotated image
+      const data = ctx.getImageData(
+        pixelCrop.x,
+        pixelCrop.y,
+        pixelCrop.width,
+        pixelCrop.height
       );
-      ctx.restore();
-      const dataUrl = canvas.toDataURL('image/jpeg');
-      resolve(dataUrl);
+
+      // set canvas to the desired crop size
+      canvas.width = pixelCrop.width;
+      canvas.height = pixelCrop.height;
+
+      // paste the cropped image
+      ctx.putImageData(data, 0, 0);
+
+      resolve(canvas.toDataURL('image/jpeg', 0.95));
     };
     image.onerror = reject;
   });
@@ -49,7 +75,7 @@ const AvatarEditor: React.FC<AvatarEditorProps> = ({ image, onCropComplete, onCa
   const handleDone = async () => {
     if (!image || !croppedAreaPixels) return;
     setLoading(true);
-    const croppedImg = await getCroppedImg(image, croppedAreaPixels, rotation, zoom);
+    const croppedImg = await getCroppedImg(image, croppedAreaPixels, rotation);
     setLoading(false);
     onCropComplete(croppedImg);
   };

@@ -28,6 +28,8 @@ interface UserProfile {
 interface ThemeEditorProps {
   profile: UserProfile;
   onUpdate: (profile: UserProfile) => void;
+  isProUser: boolean;
+  setPendingProfile: (profile: UserProfile) => void;
 }
 
 const THEME_PRESETS = [
@@ -108,10 +110,10 @@ const FONT_OPTIONS = [
   { value: "Playfair Display", label: "Playfair Display (Classic)" },
 ];
 
-export default function ThemeEditor({ profile, onUpdate }: ThemeEditorProps) {
-  const [isGradient, setIsGradient] = useState(true);
+export default function ThemeEditor({ profile, onUpdate, isProUser, setPendingProfile }: ThemeEditorProps) {
+  const [isGradient, setIsGradient] = useState(profile.buttonStyle === 'gradient');
   const [selectedPreset, setSelectedPreset] = useState<string>(profile.theme || "default");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const handlePresetSelect = (presetId: string) => {
     setSelectedPreset(presetId);
@@ -123,11 +125,11 @@ export default function ThemeEditor({ profile, onUpdate }: ThemeEditorProps) {
         buttonStyle: isGradient ? "gradient" : "solid",
         buttonColor: isGradient ? preset.buttonGradient : preset.buttonColor,
         buttonGradient: preset.buttonGradient,
-        textColor: preset.textColor,
+        textColor: profile.textColor,
         fontFamily: preset.fontFamily,
         theme: preset.id,
       };
-      onUpdate({ ...profile, ...themeData });
+      setPendingProfile({ ...profile, ...themeData });
     }
   };
 
@@ -135,6 +137,22 @@ export default function ThemeEditor({ profile, onUpdate }: ThemeEditorProps) {
     setIsGradient((prev) => !prev);
     // Nach dem Umschalten das aktuelle Preset erneut anwenden
     handlePresetSelect(selectedPreset);
+  };
+
+  const handleTextColorChange = (color: string) => {
+    setPendingProfile({ ...profile, textColor: color });
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await onUpdate(profile);
+      toast({ title: 'Theme gespeichert', description: 'Deine Theme-Einstellungen wurden übernommen.' });
+    } catch {
+      toast({ title: 'Fehler', description: 'Theme konnte nicht gespeichert werden', variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const previewStyle = {
@@ -174,6 +192,39 @@ export default function ThemeEditor({ profile, onUpdate }: ThemeEditorProps) {
               </button>
             ))}
           </div>
+          <div className="flex items-center gap-4 mt-4">
+            <label className="text-sm font-medium">Textfarbe</label>
+            <button
+              type="button"
+              className={`w-8 h-8 rounded border ${profile.textColor === '#fff' ? 'ring-2 ring-blue-500' : ''}`}
+              style={{ background: '#222', color: '#fff' }}
+              onClick={() => handleTextColorChange('#fff')}
+              aria-label="Weiß"
+            >A</button>
+            <button
+              type="button"
+              className={`w-8 h-8 rounded border ${profile.textColor === '#222' ? 'ring-2 ring-blue-500' : ''}`}
+              style={{ background: '#fff', color: '#222' }}
+              onClick={() => handleTextColorChange('#222')}
+              aria-label="Schwarz"
+            >A</button>
+            {isProUser && (
+              <input
+                type="color"
+                value={profile.textColor || '#222222'}
+                onChange={e => handleTextColorChange(e.target.value)}
+                className="w-8 h-8 p-0 border rounded"
+              />
+            )}
+          </div>
+          <button
+            type="button"
+            className="mt-4 px-4 py-2 bg-black text-white rounded text-sm font-semibold disabled:opacity-60"
+            onClick={handleSave}
+            disabled={isSaving}
+          >
+            {isSaving ? 'Speichern...' : 'Theme speichern'}
+          </button>
         </CardContent>
       </Card>
     </div>

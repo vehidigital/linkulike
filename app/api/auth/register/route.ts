@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs"
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
+    console.log('Register-API: Request-Body', body)
     const { email, password, username } = body
 
     // Validation
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
         password: hashedPassword,
         username: username.toLowerCase(),
         displayName: username,
-        onboardingCompleted: false,
+
       },
       select: {
         id: true,
@@ -66,6 +67,7 @@ export async function POST(request: NextRequest) {
         createdAt: true,
       },
     })
+    console.log('Register-API: User created', user)
 
     return NextResponse.json(
       { 

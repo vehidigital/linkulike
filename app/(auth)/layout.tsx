@@ -1,16 +1,7 @@
 import AuthHeader from "@/components/navigation/auth-header"
 import { Footer } from "@/components/navigation/footer"
-import { headers } from "next/headers"
 import { getTranslations } from "@/lib/i18n"
-
-async function getLangFromHost() {
-  const h = await headers()
-  const host = h.get("host") || ""
-  if (host.startsWith("de.")) {
-    return "de"
-  }
-  return "en"
-}
+import { getLangFromHost } from "@/lib/server-utils"
 
 export default async function AuthLayout({ children }: { children: React.ReactNode }) {
   const lang = await getLangFromHost()

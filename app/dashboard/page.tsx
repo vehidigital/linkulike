@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
-import { redirect } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { Plus, Settings, Eye, BarChart3, Palette, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -16,6 +16,8 @@ import ProfileEditor from "@/components/dashboard/ProfileEditor"
 import Analytics from "@/components/dashboard/Analytics"
 import ThemeEditor from "@/components/dashboard/ThemeEditor"
 import { ProfilePreview } from "@/components/profile/ProfilePreview"
+import { LangDropdown } from "@/components/LangDropdown"
+import { getTranslations } from "@/lib/i18n"
 
 interface Link {
   id: string
@@ -41,25 +43,72 @@ interface UserProfile {
   buttonGradient: string
   textColor: string
   fontFamily: string
+  isPremium?: boolean
 }
 
 export default function Dashboard() {
   const { data: session, status } = useSession()
+  const router = useRouter()
   const [links, setLinks] = useState<Link[]>([])
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("links")
   const [editProfile, setEditProfile] = useState<{ displayName: string; bio: string; avatarUrl: string } | null>(null);
+  const [pendingProfile, setPendingProfile] = useState<UserProfile | null>(null);
+  const [lang, setLang] = useState<"de" | "en">("en")
 
   useEffect(() => {
-    if (status === "loading") return
-    if (!session) {
-      redirect("/auth/login")
+    console.log('Dashboard useEffect - status:', status, 'session:', !!session)
+    
+    if (status === "loading") {
+      console.log('Dashboard: Still loading session...')
+      return
     }
-    fetchData()
+    
+    // Warte länger bevor wir zur Login-Seite weiterleiten
+    if (status === "unauthenticated") {
+      console.log('Dashboard: Session unauthenticated, waiting 2 seconds before redirect...')
+      const timer = setTimeout(() => {
+        console.log('Dashboard: Redirecting to login after timeout')
+        router.push("/login")
+      }, 2000)
+      
+      return () => clearTimeout(timer)
+    }
+    
+    // Nur fetchData aufrufen wenn Session definitiv da ist
+    if (status === "authenticated" && session) {
+      console.log('Dashboard: Fetching data - authenticated')
+      fetchData()
+    }
   }, [session, status])
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname
+      if (hostname.startsWith('de.')) {
+        setLang('de')
+      } else {
+        setLang('en')
+      }
+    }
+  }, [])
+
+  const t = getTranslations(lang)
+
+  useEffect(() => {
+    if (profile) {
+      setPendingProfile(profile);
+      setEditProfile({
+        displayName: profile.displayName,
+        bio: profile.bio,
+        avatarUrl: profile.avatarUrl,
+      });
+    }
+  }, [profile]);
+
   const fetchData = async () => {
+    console.log('Dashboard: Starting fetchData')
     try {
       const [linksRes, profileRes] = await Promise.all([
         fetch("/api/links"),
@@ -69,13 +118,22 @@ export default function Dashboard() {
       if (linksRes.ok) {
         const linksData = await linksRes.json()
         setLinks(linksData)
+      } else {
+        console.log('Links API failed:', linksRes.status)
+        // Bei 401 nicht zur Login-Seite weiterleiten, nur leeres Array setzen
+        setLinks([])
       }
       
       if (profileRes.ok) {
         const profileData = await profileRes.json()
         setProfile(profileData)
+      } else {
+        console.log('Profile API failed:', profileRes.status)
+        // Bei 401 nicht zur Login-Seite weiterleiten, nur null setzen
+        setProfile(null)
       }
     } catch (error) {
+      console.error('Fetch data error:', error)
       toast({
         title: "Error",
         description: "Failed to load data",
@@ -95,7 +153,9 @@ export default function Dashboard() {
           title: "New Link",
           url: "https://",
           icon: "globe",
-          position: links.length
+          position: links.length,
+          customColor: "#f3f4f6",
+          useCustomColor: true
         })
       })
 
@@ -165,8 +225,35 @@ export default function Dashboard() {
     setProfile(updatedProfile)
   }
 
-  const handleThemeUpdate = (updatedProfile: UserProfile) => {
-    setProfile(updatedProfile)
+  const handleThemeUpdate = async (updatedProfile: UserProfile) => {
+    setPendingProfile(updatedProfile);
+    try {
+      const response = await fetch("/api/user/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedProfile),
+      });
+      if (response.ok) {
+        await fetchData();
+        toast({ title: "Theme gespeichert", description: "Deine Theme-Einstellungen wurden übernommen." });
+      } else {
+        toast({ title: "Fehler", description: "Theme konnte nicht gespeichert werden", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Fehler", description: "Theme konnte nicht gespeichert werden", variant: "destructive" });
+    }
+  }
+
+  // Zeige Loading während Session noch lädt
+  if (status === "loading") {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-lg text-gray-600">Loading your session...</p>
+        </div>
+      </div>
+    )
   }
 
   if (isLoading) {
@@ -177,8 +264,20 @@ export default function Dashboard() {
     )
   }
 
+  // Zeige Dashboard auch ohne Profil - User kann es später erstellen
   if (!profile) {
-    return <div>Loading profile...</div>
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-gray-900 mb-4">Welcome to your Dashboard!</h1>
+            <p className="text-gray-600 mb-8">Your profile is being loaded. You can start creating your bio links.</p>
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-gray-900 mx-auto mb-4"></div>
+            <p className="text-sm text-gray-500">Loading your profile...</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   // Debug-Logging für Props
@@ -198,24 +297,25 @@ export default function Dashboard() {
             <div className="mb-8">
               <div className="flex items-center justify-between">
                 <div>
-                  <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+                  <h1 className="text-3xl font-bold text-gray-900">{t.dashboardTitle || "Dashboard"}</h1>
                   <p className="text-gray-600 mt-2">
-                    Manage your bio links and customize your profile
+                    {t.dashboardSubtitle || "Manage your bio links and customize your profile"}
                   </p>
                 </div>
                 <div className="flex items-center space-x-4">
+                  <LangDropdown currentLang={lang} pathname={typeof window !== 'undefined' ? window.location.pathname : '/dashboard'} />
                   <Button
                     variant="outline"
                     onClick={() => window.open(publicUrl, '_blank')}
                   >
                     <Eye className="w-4 h-4 mr-2" />
-                    View Profile
+                    {t.viewProfile || "View Profile"}
                   </Button>
                   <Button
                     variant="outline"
                     onClick={() => navigator.clipboard.writeText(publicUrl)}
                   >
-                    Copy Link
+                    {t.copyLink || "Copy Link"}
                   </Button>
                 </div>
               </div>
@@ -230,7 +330,7 @@ export default function Dashboard() {
                       <BarChart3 className="w-6 h-6 text-blue-600" />
                     </div>
                     <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">Total Clicks</p>
+                      <p className="text-sm font-medium text-gray-600">{t.statsTotalClicks || "Total Clicks"}</p>
                       <p className="text-2xl font-bold text-gray-900">
                         {links.reduce((total, link) => total + (link as any).clicks?.length || 0, 0)}
                       </p>
@@ -246,7 +346,7 @@ export default function Dashboard() {
                       <Plus className="w-6 h-6 text-green-600" />
                     </div>
                     <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">Active Links</p>
+                      <p className="text-sm font-medium text-gray-600">{t.statsActiveLinks || "Active Links"}</p>
                       <p className="text-2xl font-bold text-gray-900">
                         {links.filter(link => link.isActive).length}
                       </p>
@@ -262,7 +362,7 @@ export default function Dashboard() {
                       <User className="w-6 h-6 text-purple-600" />
                     </div>
                     <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">Profile Views</p>
+                      <p className="text-sm font-medium text-gray-600">{t.statsProfileViews || "Profile Views"}</p>
                       <p className="text-2xl font-bold text-gray-900">0</p>
                     </div>
                   </div>
@@ -276,7 +376,7 @@ export default function Dashboard() {
                       <Palette className="w-6 h-6 text-orange-600" />
                     </div>
                     <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">Theme</p>
+                      <p className="text-sm font-medium text-gray-600">{t.statsTheme || "Theme"}</p>
                       <p className="text-2xl font-bold text-gray-900 capitalize">
                         {profile.theme}
                       </p>
@@ -289,20 +389,20 @@ export default function Dashboard() {
             {/* Main Content */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
               <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="links">Links</TabsTrigger>
-                <TabsTrigger value="profile">Profile</TabsTrigger>
-                <TabsTrigger value="theme">Theme</TabsTrigger>
-                <TabsTrigger value="analytics">Analytics</TabsTrigger>
+                <TabsTrigger value="links">{t.links}</TabsTrigger>
+                <TabsTrigger value="profile">{t.profile}</TabsTrigger>
+                <TabsTrigger value="theme">{t.design}</TabsTrigger>
+                <TabsTrigger value="analytics">{t.analytics || "Analytics"}</TabsTrigger>
               </TabsList>
 
               <TabsContent value="links" className="space-y-6">
                 <Card>
                   <CardHeader>
                     <div className="flex items-center justify-between">
-                      <CardTitle>Your Links</CardTitle>
+                      <CardTitle>{t.yourLinks || "Your Links"}</CardTitle>
                       <Button onClick={handleAddLink}>
                         <Plus className="w-4 h-4 mr-2" />
-                        Add Link
+                        {t.addLink}
                       </Button>
                     </div>
                   </CardHeader>
@@ -319,7 +419,7 @@ export default function Dashboard() {
               <TabsContent value="profile" className="space-y-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Profile Settings</CardTitle>
+                    <CardTitle>{t.profileSettings || "Profile Settings"}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <ProfileEditor
@@ -328,6 +428,7 @@ export default function Dashboard() {
                       editProfile={editProfile}
                       setEditProfile={setEditProfile}
                       fetchProfile={fetchData}
+                      isProUser={profile.isPremium || false}
                     />
                   </CardContent>
                 </Card>
@@ -336,12 +437,17 @@ export default function Dashboard() {
               <TabsContent value="theme" className="space-y-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Theme & Appearance</CardTitle>
+                    <CardTitle>{t.themeAppearance || "Theme & Appearance"}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <ThemeEditor
-                      profile={profile}
-                      onUpdate={handleThemeUpdate}
+                      profile={pendingProfile || profile}
+                      onUpdate={async (updatedProfile) => {
+                        setPendingProfile(updatedProfile);
+                        await handleThemeUpdate(updatedProfile);
+                      }}
+                      isProUser={Boolean(profile.isPremium)}
+                      setPendingProfile={setPendingProfile}
                     />
                   </CardContent>
                 </Card>
@@ -350,7 +456,7 @@ export default function Dashboard() {
               <TabsContent value="analytics" className="space-y-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Analytics</CardTitle>
+                    <CardTitle>{t.analytics || "Analytics"}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <Analytics links={links} />
@@ -362,17 +468,17 @@ export default function Dashboard() {
           {/* Smartphone Bio Preview */}
           <div className="hidden lg:block min-w-[320px] max-w-[340px]">
             <ProfilePreview
-              displayName={activeTab === 'profile' && editProfile ? editProfile.displayName : profile.displayName}
+              displayName={activeTab === 'profile' && editProfile ? editProfile.displayName : (activeTab === 'theme' && pendingProfile ? pendingProfile.displayName : profile.displayName)}
               username={profile.username}
-              bio={activeTab === 'profile' && editProfile ? editProfile.bio : profile.bio}
-              avatarUrl={activeTab === 'profile' && editProfile ? editProfile.avatarUrl : profile.avatarUrl}
+              bio={activeTab === 'profile' && editProfile ? editProfile.bio : (activeTab === 'theme' && pendingProfile ? pendingProfile.bio : profile.bio)}
+              avatarUrl={activeTab === 'profile' && editProfile ? editProfile.avatarUrl : (activeTab === 'theme' && pendingProfile ? pendingProfile.avatarUrl : profile.avatarUrl)}
               links={links}
-              theme={profile.buttonStyle === "gradient" ? profile.backgroundGradient : profile.backgroundColor}
-              buttonStyle={profile.buttonStyle}
-              buttonColor={profile.buttonColor}
-              buttonGradient={profile.buttonGradient}
-              currentLang={profile?.username?.startsWith('de') ? 'de' : 'en'}
-              textColor={profile.textColor}
+              theme={activeTab === 'theme' && pendingProfile ? (pendingProfile.buttonStyle === "gradient" ? pendingProfile.backgroundGradient : pendingProfile.backgroundColor) : (profile.buttonStyle === "gradient" ? profile.backgroundGradient : profile.backgroundColor)}
+              buttonStyle={activeTab === 'theme' && pendingProfile ? pendingProfile.buttonStyle : profile.buttonStyle}
+              buttonColor={activeTab === 'theme' && pendingProfile ? pendingProfile.buttonColor : profile.buttonColor}
+              buttonGradient={activeTab === 'theme' && pendingProfile ? pendingProfile.buttonGradient : profile.buttonGradient}
+              currentLang={lang}
+              textColor={activeTab === 'theme' && pendingProfile ? pendingProfile.textColor : profile.textColor}
             />
           </div>
         </div>

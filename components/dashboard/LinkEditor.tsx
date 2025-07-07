@@ -15,6 +15,7 @@ import { getColorForUrl, getIconForUrl, socialPlatforms } from "@/lib/social-ico
 import { getRandomModernColor, getContrastColor, hasLowContrast } from "@/lib/color-utils";
 import { SolidLinkButton } from "@/components/profile/SolidLinkButton";
 import { getLinkButtonColors, getLinkIcon } from "@/lib/link-button-utils";
+import { getTranslations } from "@/lib/i18n";
 
 interface Link {
   id: string;
@@ -25,6 +26,7 @@ interface Link {
   position: number;
   customColor?: string;
   useCustomColor?: boolean;
+  textColorOverride?: 'light' | 'dark' | undefined;
 }
 
 interface LinkEditorProps {
@@ -32,17 +34,18 @@ interface LinkEditorProps {
   onUpdate: (links: Link[]) => void;
   onDelete: (linkId: string) => void;
   theme?: string;
+  currentLang?: "de" | "en";
 }
 
 export const ICON_OPTIONS = [
-  { value: "", label: "", name: "Kein Icon" },
-  { value: "globe", label: "🌐", name: "Globe" },
-  { value: "link", label: "🔗", name: "Link" },
-  { value: "mail", label: "✉️", name: "Mail" },
-  { value: "phone", label: "📞", name: "Phone" },
-  { value: "briefcase", label: "💼", name: "Business" },
-  { value: "document", label: "📄", name: "Dokument" },
-  { value: "mobile", label: "📱", name: "Handy" },
+  { value: "", label: "", name: "noIcon" },
+  { value: "globe", label: "🌐", name: "globe" },
+  { value: "link", label: "🔗", name: "link" },
+  { value: "mail", label: "✉️", name: "mail" },
+  { value: "phone", label: "📞", name: "phone" },
+  { value: "briefcase", label: "💼", name: "business" },
+  { value: "document", label: "📄", name: "document" },
+  { value: "mobile", label: "📱", name: "mobile" },
 ];
 
 const THEME_COLORS = {
@@ -62,19 +65,21 @@ function getColorPresets(theme = "Default") {
   const themeKey = theme as ThemeKey;
   const themeColor = THEME_COLORS[themeKey]?.color || THEME_COLORS.Default.color
   return [
-    { name: "Standard", value: themeColor },
-    { name: "Neutral", value: "#9ca3af" },
-    { name: "Grün", value: "#22c55e" },
-    { name: "Orange", value: "#f59e42" },
-    { name: "Pink", value: "#ec4899" },
-    { name: "Schwarz", value: "#222" },
-    { name: "Grau", value: "#6b7280" },
+    { name: "standard", value: themeColor },
+    { name: "white", value: "#ffffff" },
+    { name: "neutral", value: "#9ca3af" },
+    { name: "green", value: "#22c55e" },
+    { name: "orange", value: "#f59e42" },
+    { name: "pink", value: "#ec4899" },
+    { name: "black", value: "#222" },
+    { name: "gray", value: "#6b7280" },
   ]
 }
 
-export default function LinkEditor({ links, onUpdate, onDelete, theme = "Default" }: LinkEditorProps) {
+export default function LinkEditor({ links, onUpdate, onDelete, theme = "Default", currentLang = "en" }: LinkEditorProps) {
   const [editingLink, setEditingLink] = useState<Link | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const t = getTranslations(currentLang);
 
   // Die Standardfarbe aus dem aktuellen Theme holen
   const themeKey = theme as ThemeKey;
@@ -120,14 +125,14 @@ export default function LinkEditor({ links, onUpdate, onDelete, theme = "Default
         setIsEditing(false);
         setEditingLink(null);
         toast({
-          title: "Success",
-          description: "Link updated successfully",
+          title: t.success || "Success",
+          description: t.linkUpdatedSuccess || "Link updated successfully",
         });
       }
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to update link",
+        title: t.error || "Error",
+        description: t.linkUpdateFailed || "Failed to update link",
         variant: "destructive",
       });
     }
@@ -309,6 +314,7 @@ function EditLinkForm({ link, onSave, onCancel, theme }: EditLinkFormProps) {
     icon: link.icon,
     color: link.customColor || THEME_COLORS[theme as ThemeKey]?.color || THEME_COLORS.Default.color,
     useCustomColor: link.useCustomColor || false,
+    textColorOverride: link.textColorOverride || undefined,
   });
 
   // COLOR_PRESETS auch hier dynamisch erzeugen
@@ -321,6 +327,10 @@ function EditLinkForm({ link, onSave, onCancel, theme }: EditLinkFormProps) {
 
   const currentColor = formData.color;
   const textColor = getContrastColor(currentColor);
+
+  let previewTextColor = getContrastColor(currentColor);
+  if (formData.textColorOverride === 'light') previewTextColor = '#fff';
+  else if (formData.textColorOverride === 'dark') previewTextColor = '#222';
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -411,6 +421,29 @@ function EditLinkForm({ link, onSave, onCancel, theme }: EditLinkFormProps) {
             </label>
           </div>
         )}
+        <div className="flex gap-2 mt-2">
+          <button
+            type="button"
+            className={`w-8 h-8 rounded border ${!formData.textColorOverride ? 'ring-2 ring-blue-500' : ''}`}
+            style={{ background: '#eee', color: '#222' }}
+            onClick={() => setFormData(f => ({ ...f, textColorOverride: undefined }))}
+            aria-label="Auto"
+          >A</button>
+          <button
+            type="button"
+            className={`w-8 h-8 rounded border ${formData.textColorOverride === 'light' ? 'ring-2 ring-blue-500' : ''}`}
+            style={{ background: '#222', color: '#fff' }}
+            onClick={() => setFormData(f => ({ ...f, textColorOverride: 'light' }))}
+            aria-label="Hell"
+          >A</button>
+          <button
+            type="button"
+            className={`w-8 h-8 rounded border ${formData.textColorOverride === 'dark' ? 'ring-2 ring-blue-500' : ''}`}
+            style={{ background: '#fff', color: '#222' }}
+            onClick={() => setFormData(f => ({ ...f, textColorOverride: 'dark' }))}
+            aria-label="Dunkel"
+          >A</button>
+        </div>
         <div className="mb-2">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Vorschau
@@ -419,7 +452,7 @@ function EditLinkForm({ link, onSave, onCancel, theme }: EditLinkFormProps) {
             title={formData.title}
             color={currentColor}
             icon={ICON_OPTIONS.find(opt => opt.value === formData.icon)?.label}
-            textColor={getContrastColor(currentColor)}
+            textColor={previewTextColor}
           />
         </div>
       </div>

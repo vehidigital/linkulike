@@ -25,7 +25,6 @@ export default function RegisterPage() {
   const router = useRouter()
 
   useEffect(() => {
-    // Detect language from hostname
     if (typeof window !== 'undefined') {
       const hostname = window.location.hostname
       if (hostname.startsWith('de.')) {
@@ -56,6 +55,8 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+
+    console.log('Formulardaten:', formData)
 
     // Validation
     if (formData.password !== formData.confirmPassword) {
@@ -89,24 +90,40 @@ export default function RegisterPage() {
         }),
       })
 
+      console.log('API-Response:', response)
+
       if (response.ok) {
         // Nach erfolgreicher Registrierung automatisch einloggen
         const signInResult = await signIn("credentials", {
-          email: formData.email,
+          email: formData.email.toLowerCase(),
           password: formData.password,
           redirect: false,
         })
+        console.log('signInResult', signInResult)
         if (signInResult && !signInResult.error) {
-          router.push("/dashboard")
+          // Erfolgreiche Registrierung - direkt zum Dashboard weiterleiten
+          toast({
+            title: lang === "de" ? "Erfolg" : "Success",
+            description: lang === "de" ? "Konto erfolgreich erstellt! Du wirst zum Dashboard weitergeleitet." : "Account created successfully! You will be redirected to dashboard.",
+          })
+          
+          // Einfache Weiterleitung nach kurzer Verzögerung
+          setTimeout(() => {
+            window.location.href = "/dashboard"
+          }, 1000)
         } else {
           toast({
             title: lang === "de" ? "Fehler" : "Error",
-            description: lang === "de" ? "Automatisches Login fehlgeschlagen" : "Automatic login failed",
+            description: (lang === "de" ? "Automatisches Login fehlgeschlagen. Bitte melde dich manuell an." : "Automatic login failed. Please sign in manually."),
+            action: (
+              <Link href="/login" className="underline text-blue-600 ml-2">{lang === "de" ? "Zum Login" : "Go to Login"}</Link>
+            ),
             variant: "destructive",
           })
         }
       } else {
         const error = await response.json()
+        console.log('API-Error:', error)
         toast({
           title: lang === "de" ? "Fehler" : "Error",
           description: error.error || (lang === "de" ? "Konto konnte nicht erstellt werden" : "Failed to create account"),
@@ -114,6 +131,7 @@ export default function RegisterPage() {
         })
       }
     } catch (error) {
+      console.log('Catch-Error:', error)
       toast({
         title: lang === "de" ? "Fehler" : "Error",
         description: lang === "de" ? "Etwas ist schiefgelaufen" : "Something went wrong",
@@ -125,7 +143,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex flex-col items-center justify-center px-4">
       <div className="w-full max-w-md">
         <Card className="border-0 shadow-xl">
           <CardHeader className="text-center pb-8">
@@ -135,10 +153,10 @@ export default function RegisterPage() {
               </div>
             </div>
             <CardTitle className="text-2xl font-bold">
-              {lang === "de" ? "Erstelle dein Konto" : "Create your account"}
+              {t.registerTitle || (lang === "de" ? "Erstelle dein Konto" : "Create your account")}
             </CardTitle>
             <p className="text-gray-600 mt-2">
-              {lang === "de" ? "Schließe dich tausenden von Creatorn auf Linkulike an" : "Join thousands of creators on Linkulike"}
+              {t.registerSubtitle || (lang === "de" ? "Schließe dich tausenden von Creatorn auf Linkulike an" : "Join thousands of creators on Linkulike")}
             </p>
           </CardHeader>
           <CardContent>
@@ -154,13 +172,12 @@ export default function RegisterPage() {
                     name="username"
                     value={formData.username}
                     onChange={handleChange}
-                    placeholder={lang === "de" ? "Wähle einen Benutzernamen" : "Choose a username"}
+                    placeholder={t.username}
                     className="pl-10"
                     required
                   />
                 </div>
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   {t.email}
@@ -172,13 +189,12 @@ export default function RegisterPage() {
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
-                    placeholder={lang === "de" ? "Gib deine E-Mail ein" : "Enter your email"}
+                    placeholder={t.email}
                     className="pl-10"
                     required
                   />
                 </div>
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   {t.password}
@@ -190,27 +206,23 @@ export default function RegisterPage() {
                     name="password"
                     value={formData.password}
                     onChange={handleChange}
-                    placeholder={lang === "de" ? "Erstelle ein Passwort" : "Create a password"}
+                    placeholder={t.password}
                     className="pl-10 pr-10"
                     required
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                    onClick={() => setShowPassword(v => !v)}
+                    tabIndex={-1}
                   >
-                    {showPassword ? (
-                      <EyeOff className="w-4 h-4" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
-                    )}
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {lang === "de" ? "Passwort bestätigen" : "Confirm Password"}
+                  {t.confirmPassword || (lang === "de" ? "Passwort bestätigen" : "Confirm password")}
                 </label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -219,50 +231,29 @@ export default function RegisterPage() {
                     name="confirmPassword"
                     value={formData.confirmPassword}
                     onChange={handleChange}
-                    placeholder={lang === "de" ? "Bestätige dein Passwort" : "Confirm your password"}
+                    placeholder={t.confirmPassword || (lang === "de" ? "Passwort bestätigen" : "Confirm password")}
                     className="pl-10 pr-10"
                     required
                   />
                   <button
                     type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                    onClick={() => setShowConfirmPassword(v => !v)}
+                    tabIndex={-1}
                   >
-                    {showConfirmPassword ? (
-                      <EyeOff className="w-4 h-4" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
-                    )}
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
-
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                ) : (
-                  <>
-                    {t.register}
-                    <ArrowRight className="ml-2 w-4 h-4" />
-                  </>
-                )}
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? t.loading : t.register}
+                <ArrowRight className="ml-2 w-4 h-4" />
               </Button>
             </form>
-
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
-                {t.alreadyRegistered}{" "}
-                <Link
-                  href="/login"
-                  className="font-medium text-blue-600 hover:text-blue-500"
-                >
-                  {t.signIn}
-                </Link>
-              </p>
+            <div className="mt-6 flex justify-between items-center text-sm">
+              <Link href="/login" className="text-blue-600 hover:underline">
+                {t.alreadyRegistered} {t.login}
+              </Link>
             </div>
           </CardContent>
         </Card>

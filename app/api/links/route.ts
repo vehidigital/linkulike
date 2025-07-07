@@ -81,8 +81,8 @@ export async function POST(request: NextRequest) {
         url,
         icon: icon || "globe",
         position: position || 0,
-        customColor: customColor || null,
-        useCustomColor: useCustomColor || false,
+        customColor: customColor !== undefined ? customColor : "#f3f4f6",
+        useCustomColor: useCustomColor !== undefined ? useCustomColor : true,
         userId: user.id,
       },
     })

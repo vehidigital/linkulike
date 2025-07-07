@@ -6,25 +6,14 @@ export function SolidLinkButton({ title, color, icon, textColor }: { title?: str
 
   return (
     <button
+      className="w-full py-3 px-4 rounded-xl font-bold text-base mb-3 flex items-center justify-center gap-3 shadow"
       style={{
         backgroundColor: color || "#6366f1",
         color: effectiveTextColor,
         border: "none",
-        borderRadius: "1rem",
-        padding: "1rem 2rem",
-        fontWeight: 700,
-        fontSize: "1.1rem",
-        width: "100%",
-        opacity: 1,
-        boxShadow: "0 4px 16px 0 rgba(0,0,0,0.13)",
-        marginBottom: "1rem",
-        display: "flex",
-        alignItems: "center",
-        gap: "1rem",
-        justifyContent: "center"
       }}
     >
-      {icon && <span style={{ fontSize: "1.3em" }}>{icon}</span>}
+      {icon && <span className="text-lg">{icon}</span>}
       <span>{buttonTitle}</span>
     </button>
   )

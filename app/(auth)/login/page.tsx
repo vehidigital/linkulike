@@ -11,6 +11,7 @@ import { toast } from "@/hooks/use-toast"
 import { Eye, EyeOff, Mail, Lock, ArrowRight } from "lucide-react"
 import { getTranslations } from "@/lib/i18n"
 
+
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -46,21 +47,23 @@ export default function LoginPage() {
 
       if (result?.error) {
         toast({
-          title: lang === "de" ? "Fehler" : "Error",
+          title: t.loginErrorTitle || (lang === "de" ? "Fehler" : "Error"),
           description: t.loginError,
           variant: "destructive",
         })
       } else {
         toast({
-          title: lang === "de" ? "Erfolg" : "Success",
-          description: lang === "de" ? "Erfolgreich angemeldet" : "Logged in successfully",
+          title: t.loginSuccessTitle || (lang === "de" ? "Erfolg" : "Success"),
+          description: t.loginSuccess || (lang === "de" ? "Erfolgreich angemeldet" : "Logged in successfully"),
         })
+        
+        // Direkt zum Dashboard weiterleiten
         router.push("/dashboard")
       }
     } catch (error) {
       toast({
-        title: lang === "de" ? "Fehler" : "Error",
-        description: lang === "de" ? "Etwas ist schiefgelaufen" : "Something went wrong",
+        title: t.loginErrorTitle || (lang === "de" ? "Fehler" : "Error"),
+        description: t.loginErrorGeneric || (lang === "de" ? "Etwas ist schiefgelaufen" : "Something went wrong"),
         variant: "destructive",
       })
     } finally {
@@ -69,8 +72,9 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex flex-col items-center justify-center px-4">
       <div className="w-full max-w-md">
+
         <Card className="border-0 shadow-xl">
           <CardHeader className="text-center pb-8">
             <div className="flex items-center justify-center mb-4">
@@ -79,10 +83,10 @@ export default function LoginPage() {
               </div>
             </div>
             <CardTitle className="text-2xl font-bold">
-              {lang === "de" ? "Willkommen zurück" : "Welcome back"}
+              {t.loginWelcome || (lang === "de" ? "Willkommen zurück" : "Welcome back")}
             </CardTitle>
             <p className="text-gray-600 mt-2">
-              {lang === "de" ? "Melde dich in deinem Linkulike-Konto an" : "Sign in to your Linkulike account"}
+              {t.loginSubtitle || (lang === "de" ? "Melde dich in deinem Linkulike-Konto an" : "Sign in to your Linkulike account")}
             </p>
           </CardHeader>
           <CardContent>
@@ -95,9 +99,10 @@ export default function LoginPage() {
                   <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <Input
                     type="email"
+                    name="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder={lang === "de" ? "Gib deine E-Mail ein" : "Enter your email"}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder={t.email}
                     className="pl-10"
                     required
                   />
@@ -112,22 +117,20 @@ export default function LoginPage() {
                   <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <Input
                     type={showPassword ? "text" : "password"}
+                    name="password"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder={lang === "de" ? "Gib dein Passwort ein" : "Enter your password"}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder={t.password}
                     className="pl-10 pr-10"
                     required
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                    onClick={() => setShowPassword(v => !v)}
+                    tabIndex={-1}
                   >
-                    {showPassword ? (
-                      <EyeOff className="w-4 h-4" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
-                    )}
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
@@ -137,27 +140,18 @@ export default function LoginPage() {
                 className="w-full"
                 disabled={isLoading}
               >
-                {isLoading ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                ) : (
-                  <>
-                    {t.signIn}
-                    <ArrowRight className="ml-2 w-4 h-4" />
-                  </>
-                )}
+                {isLoading ? t.loading : t.login}
+                <ArrowRight className="ml-2 w-4 h-4" />
               </Button>
             </form>
 
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
-                {t.noAccount}{" "}
-                <Link
-                  href="/register"
-                  className="font-medium text-blue-600 hover:text-blue-500"
-                >
-                  {lang === "de" ? "Registrieren" : "Sign up"}
-                </Link>
-              </p>
+            <div className="mt-6 flex justify-between items-center text-sm">
+              <Link href="/register" className="text-blue-600 hover:underline">
+                {t.noAccount} {t.register}
+              </Link>
+              <Link href="#" className="text-gray-500 hover:underline">
+                {t.forgotPassword}
+              </Link>
             </div>
           </CardContent>
         </Card>

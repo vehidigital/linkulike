@@ -1,10 +1,9 @@
+import { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { prisma } from "@/lib/db"
 import bcrypt from "bcryptjs"
-import type { JWT } from "next-auth/jwt"
-import type { Session, AuthOptions, SessionStrategy } from "next-auth"
 
-export const authOptions: AuthOptions = {
+export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
       name: "credentials",
@@ -12,16 +11,25 @@ export const authOptions: AuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" }
       },
-      async authorize(credentials: Record<string, string> | undefined) {
+      async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
           return null
         }
+
         const user = await prisma.user.findUnique({
           where: { email: credentials.email.toLowerCase() }
         })
-        if (!user) return null
+
+        if (!user) {
+          return null
+        }
+
         const isPasswordValid = await bcrypt.compare(credentials.password, user.password)
-        if (!isPasswordValid) return null
+
+        if (!isPasswordValid) {
+          return null
+        }
+
         return {
           id: user.id,
           email: user.email,
@@ -30,16 +38,13 @@ export const authOptions: AuthOptions = {
           bio: user.bio || undefined,
           avatarUrl: user.avatarUrl || undefined,
           theme: user.theme || undefined,
-          onboardingCompleted: user.onboardingCompleted || false,
           isPremium: user.isPremium,
         }
       }
     })
   ],
-  session: { strategy: "jwt" as SessionStrategy },
-  pages: { signIn: "/login" },
   callbacks: {
-    async jwt({ token, user }: { token: JWT, user?: any }) {
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id
         token.username = user.username
@@ -47,23 +52,28 @@ export const authOptions: AuthOptions = {
         token.bio = user.bio
         token.avatarUrl = user.avatarUrl
         token.theme = user.theme
-        token.onboardingCompleted = user.onboardingCompleted
         token.isPremium = user.isPremium
       }
       return token
     },
-    async session({ session, token }: { session: Session, token: JWT }) {
-      if (token && session.user) {
-        session.user.id = token.id as string
-        session.user.username = token.username as string
-        session.user.displayName = token.displayName as string
-        session.user.bio = token.bio as string
-        session.user.avatarUrl = token.avatarUrl as string
-        session.user.theme = token.theme as string
-        session.user.onboardingCompleted = token.onboardingCompleted as boolean
-        session.user.isPremium = token.isPremium as boolean
+    async session({ session, token }) {
+      if (token) {
+        session.user.id = token.id
+        session.user.username = token.username
+        session.user.displayName = token.displayName
+        session.user.bio = token.bio
+        session.user.avatarUrl = token.avatarUrl
+        session.user.theme = token.theme
+        session.user.isPremium = token.isPremium
       }
       return session
     }
-  }
+  },
+  pages: {
+    signIn: "/login",
+  },
+  session: {
+    strategy: "jwt",
+  },
+  secret: process.env.NEXTAUTH_SECRET,
 } 

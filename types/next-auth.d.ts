@@ -10,7 +10,7 @@ declare module "next-auth" {
       bio?: string
       avatarUrl?: string
       theme?: string
-      onboardingCompleted: boolean
+
       isPremium: boolean
     }
   }
@@ -23,7 +23,6 @@ declare module "next-auth" {
     bio?: string
     avatarUrl?: string
     theme?: string
-    onboardingCompleted: boolean
     isPremium: boolean
   }
 }
@@ -36,7 +35,6 @@ declare module "next-auth/jwt" {
     bio?: string
     avatarUrl?: string
     theme?: string
-    onboardingCompleted: boolean
     isPremium: boolean
   }
 } 

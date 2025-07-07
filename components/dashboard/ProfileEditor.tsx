@@ -24,6 +24,7 @@ interface UserProfile {
   buttonGradient: string;
   textColor: string;
   fontFamily: string;
+  buttonTextColor?: string;
 }
 
 interface ProfileEditorProps {
@@ -32,9 +33,10 @@ interface ProfileEditorProps {
   editProfile?: { displayName: string; bio: string; avatarUrl: string } | null;
   setEditProfile?: (profile: { displayName: string; bio: string; avatarUrl: string }) => void;
   fetchProfile?: () => void;
+  isProUser: boolean;
 }
 
-export default function ProfileEditor({ profile, onUpdate, editProfile, setEditProfile, fetchProfile }: ProfileEditorProps) {
+export default function ProfileEditor({ profile, onUpdate, editProfile, setEditProfile, fetchProfile, isProUser }: ProfileEditorProps) {
   const [formData, setFormData] = useState({
     username: profile.username,
     displayName: profile.displayName || "",
@@ -44,6 +46,7 @@ export default function ProfileEditor({ profile, onUpdate, editProfile, setEditP
   const [isLoading, setIsLoading] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [originalImage, setOriginalImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Use UploadThing hook
@@ -119,6 +122,9 @@ export default function ProfileEditor({ profile, onUpdate, editProfile, setEditP
       if (response.ok) {
         const updatedProfile = await response.json();
         onUpdate(updatedProfile);
+        toast({ title: 'Profil gespeichert', description: 'Deine Änderungen wurden übernommen.' });
+      } else {
+        toast({ title: 'Fehler', description: 'Profil konnte nicht gespeichert werden', variant: 'destructive' });
       }
     } finally {
       setIsLoading(false);
@@ -130,7 +136,9 @@ export default function ProfileEditor({ profile, onUpdate, editProfile, setEditP
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
-      setSelectedImage(ev.target?.result as string);
+      const imageData = ev.target?.result as string;
+      setSelectedImage(imageData);
+      setOriginalImage(imageData); // Store the original image
       setEditorOpen(true);
     };
     reader.readAsDataURL(file);
@@ -138,6 +146,44 @@ export default function ProfileEditor({ profile, onUpdate, editProfile, setEditP
 
   const handleAvatarEdit = () => {
     fileInputRef.current?.click();
+  };
+
+  const handleAvatarEditExisting = async () => {
+    if (!formData.avatarUrl) return;
+    
+    try {
+      console.log('Loading existing avatar:', formData.avatarUrl);
+      
+      // If we have the original image stored, use it
+      if (originalImage) {
+        console.log('Using stored original image');
+        setSelectedImage(originalImage);
+        setEditorOpen(true);
+        return;
+      }
+      
+      // Otherwise, fetch the existing avatar image
+      const response = await fetch(formData.avatarUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.status}`);
+      }
+      
+      const blob = await response.blob();
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      
+      console.log('Avatar loaded successfully, opening editor');
+      setSelectedImage(dataUrl);
+      setOriginalImage(dataUrl); // Store as original for future edits
+      setEditorOpen(true);
+    } catch (error) {
+      console.error('Error loading existing avatar:', error);
+      toast({ title: "Fehler", description: "Bestehendes Bild konnte nicht geladen werden", variant: "destructive" });
+    }
   };
 
   const handleAvatarEditorCancel = () => {
@@ -171,6 +217,14 @@ export default function ProfileEditor({ profile, onUpdate, editProfile, setEditP
     console.log('ProfileEditor avatarUrl:', formData.avatarUrl);
   }, [formData.avatarUrl]);
 
+  // Store original image when component loads with an avatar
+  useEffect(() => {
+    if (formData.avatarUrl && !originalImage) {
+      // Store the current avatar as the original image for editing
+      setOriginalImage(formData.avatarUrl);
+    }
+  }, [formData.avatarUrl, originalImage]);
+
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4 max-w-md">
       {/* Avatar Upload + Preview */}
@@ -189,7 +243,12 @@ export default function ProfileEditor({ profile, onUpdate, editProfile, setEditP
             </AvatarFallback>
           )}
         </Avatar>
-        <button type="button" onClick={handleAvatarEdit} className="bg-black text-white rounded px-3 py-1 text-xs font-semibold hover:bg-gray-900">Foto ändern</button>
+        <div className="flex flex-col gap-1">
+          <button type="button" onClick={handleAvatarEdit} className="bg-black text-white rounded px-3 py-1 text-xs font-semibold hover:bg-gray-900">Neues Foto</button>
+          {formData.avatarUrl && (
+            <button type="button" onClick={handleAvatarEditExisting} className="bg-gray-600 text-white rounded px-3 py-1 text-xs font-semibold hover:bg-gray-700">Bearbeiten</button>
+          )}
+        </div>
         {formData.avatarUrl && (
           <button
             type="button"

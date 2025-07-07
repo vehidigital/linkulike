@@ -25,7 +25,7 @@ export function PublicNav() {
     }
   }, [pathname])
 
-  const translations = getTranslations(currentLang as "de" | "en")
+  const t = getTranslations(currentLang as "de" | "en")
 
   return (
     <header className="w-full bg-white/95 backdrop-blur-md border-b border-gray-100 sticky top-0 z-50 shadow-sm">
@@ -35,16 +35,16 @@ export function PublicNav() {
           <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
             <span className="text-white font-bold text-sm">L</span>
           </div>
-          <span className="font-bold text-xl text-gray-900">LikeUlike</span>
+          <span className="font-bold text-xl text-gray-900">linkulike</span>
         </Link>
 
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center space-x-8">
           <Link href="/features" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">
-            {translations.features}
+            {t.features}
           </Link>
           <Link href="/pricing" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">
-            {translations.pricing}
+            {t.pricing}
           </Link>
         </div>
 
@@ -52,45 +52,33 @@ export function PublicNav() {
         <div className="hidden md:flex items-center space-x-4">
           <LangDropdown currentLang={currentLang} pathname={pathname} />
           <Link href="/login" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">
-            {translations.login}
+            {t.login}
           </Link>
           <Link href="/register">
             <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold px-6 py-2 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200">
-              {translations.register}
+              {t.register}
             </Button>
           </Link>
         </div>
 
         {/* Mobile Menu Button */}
         <button
-          className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
+          className="md:hidden flex items-center text-gray-600 hover:text-gray-900 focus:outline-none"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          aria-label="Open menu"
         >
-          {mobileMenuOpen ? (
-            <X className="w-6 h-6 text-gray-600" />
-          ) : (
-            <Menu className="w-6 h-6 text-gray-600" />
-          )}
+          {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
         </button>
       </nav>
-
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-white border-t border-gray-100 shadow-lg">
-          <div className="container mx-auto px-6 py-4 space-y-4">
-            <Link 
-              href="/features" 
-              className="block text-gray-600 hover:text-gray-900 font-medium py-2 transition-colors"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              {translations.features}
+        <div className="md:hidden bg-white border-t border-gray-100 shadow-lg absolute w-full left-0 z-50">
+          <div className="flex flex-col p-6 space-y-4">
+            <Link href="/features" className="text-gray-600 hover:text-gray-900 font-medium transition-colors" onClick={() => setMobileMenuOpen(false)}>
+              {t.features}
             </Link>
-            <Link 
-              href="/pricing" 
-              className="block text-gray-600 hover:text-gray-900 font-medium py-2 transition-colors"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              {translations.pricing}
+            <Link href="/pricing" className="text-gray-600 hover:text-gray-900 font-medium transition-colors" onClick={() => setMobileMenuOpen(false)}>
+              {t.pricing}
             </Link>
             <div className="pt-4 border-t border-gray-100">
               <div className="flex items-center justify-between mb-4">
@@ -100,12 +88,12 @@ export function PublicNav() {
                   className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  {translations.login}
+                  {t.login}
                 </Link>
               </div>
               <Link href="/register" onClick={() => setMobileMenuOpen(false)}>
                 <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200">
-                  {translations.register}
+                  {t.register}
                 </Button>
               </Link>
             </div>

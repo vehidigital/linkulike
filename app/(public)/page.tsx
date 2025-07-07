@@ -18,17 +18,8 @@ import {
   Github
 } from "lucide-react"
 import { getTranslations } from "@/lib/i18n"
-import { headers } from "next/headers"
+import { getLangFromHost } from "@/lib/server-utils"
 import { PublicNav } from "@/components/navigation/public-nav"
-
-async function getLangFromHost() {
-  const h = await headers()
-  const host = h.get("host") || ""
-  if (host.startsWith("de.")) {
-    return "de"
-  }
-  return "en"
-}
 
 export default async function LandingPage() {
   const lang = await getLangFromHost()
@@ -37,51 +28,30 @@ export default async function LandingPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       {/* Navigation */}
-      <nav className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">L</span>
-              </div>
-              <span className="font-bold text-xl">Linkulike</span>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Link href="/login">
-                <Button variant="ghost">Sign In</Button>
-              </Link>
-              <Link href="/register">
-                <Button>Get Started</Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <PublicNav />
 
       {/* Hero Section */}
       <section className="py-20 px-4">
         <div className="max-w-7xl mx-auto text-center">
           <Badge className="mb-4" variant="secondary">
-            ✨ The Ultimate Bio Link Platform
+            ✨ {t.description}
           </Badge>
           <h1 className="text-5xl md:text-7xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-6">
-            One Link,<br />
-            Infinite Possibilities
+            {t.heroTitle}
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-            Create beautiful, customizable bio link pages that showcase all your important links in one place. 
-            Perfect for creators, entrepreneurs, and anyone who wants to make a lasting impression.
+            {t.heroDescription}
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/register">
               <Button size="lg" className="text-lg px-8 py-6">
-                Start Creating Free
+                {t.heroCta}
                 <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
             </Link>
             <Link href="#features">
               <Button variant="outline" size="lg" className="text-lg px-8 py-6">
-                See How It Works
+                {t.featuresTitle}
               </Button>
             </Link>
           </div>
@@ -94,15 +64,15 @@ export default async function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
             <div>
               <div className="text-4xl font-bold text-blue-600 mb-2">10K+</div>
-              <div className="text-gray-600">Active Users</div>
+              <div className="text-gray-600">{t["statsActiveUsers"] || "Active Users"}</div>
             </div>
             <div>
               <div className="text-4xl font-bold text-purple-600 mb-2">1M+</div>
-              <div className="text-gray-600">Links Created</div>
+              <div className="text-gray-600">{t["statsLinksCreated"] || "Links Created"}</div>
             </div>
             <div>
               <div className="text-4xl font-bold text-pink-600 mb-2">5M+</div>
-              <div className="text-gray-600">Clicks Tracked</div>
+              <div className="text-gray-600">{t["statsClicksTracked"] || "Clicks Tracked"}</div>
             </div>
           </div>
         </div>
@@ -113,10 +83,10 @@ export default async function LandingPage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Everything You Need to Succeed
+              {t.featuresTitle}
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Powerful features designed to help you create stunning bio link pages and grow your online presence.
+              {t["featuresDescription"] || "Powerful features designed to help you create stunning bio link pages and grow your online presence."}
             </p>
           </div>
 
@@ -126,81 +96,76 @@ export default async function LandingPage() {
                 <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
                   <Palette className="w-6 h-6 text-blue-600" />
                 </div>
-                <CardTitle>Beautiful Themes</CardTitle>
+                <CardTitle>{t["featureTheme"] || "Beautiful Themes"}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-gray-600">
-                  Choose from dozens of stunning themes or create your own custom design with our intuitive editor.
+                  {t["featureThemeDesc"] || "Choose from dozens of stunning themes or create your own custom design with our intuitive editor."}
                 </p>
               </CardContent>
             </Card>
-
             <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
               <CardHeader>
                 <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
                   <BarChart3 className="w-6 h-6 text-green-600" />
                 </div>
-                <CardTitle>Analytics & Insights</CardTitle>
+                <CardTitle>{t["featureAnalytics"] || "Analytics & Insights"}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-gray-600">
-                  Track clicks, views, and engagement with detailed analytics to understand what works best.
+                  {t["featureAnalyticsDesc"] || "Track clicks, views, and engagement with detailed analytics to understand what works best."}
                 </p>
               </CardContent>
             </Card>
-
             <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
               <CardHeader>
                 <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4">
                   <Smartphone className="w-6 h-6 text-purple-600" />
                 </div>
-                <CardTitle>Mobile Optimized</CardTitle>
+                <CardTitle>{t["featureMobile"] || "Mobile Optimized"}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-gray-600">
-                  Perfect on every device. Your bio link page looks great on phones, tablets, and desktops.
+                  {t["featureMobileDesc"] || "Perfect on every device. Your bio link page looks great on phones, tablets, and desktops."}
                 </p>
               </CardContent>
             </Card>
-
             <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
               <CardHeader>
                 <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mb-4">
                   <Zap className="w-6 h-6 text-orange-600" />
                 </div>
-                <CardTitle>Lightning Fast</CardTitle>
+                <CardTitle>{t["featureFast"] || "Lightning Fast"}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-gray-600">
-                  Built with modern technology for instant loading and smooth performance worldwide.
+                  {t["featureFastDesc"] || "Built with modern technology for instant loading and smooth performance worldwide."}
                 </p>
               </CardContent>
             </Card>
-
             <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
               <CardHeader>
                 <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center mb-4">
                   <Globe className="w-6 h-6 text-red-600" />
                 </div>
-                <CardTitle>Custom Domains</CardTitle>
+                <CardTitle>{t["featureDomains"] || "Free Subdomain"}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-gray-600">
-                  Use your own domain or get a free subdomain. Brand your bio link page your way.
+                  {t["featureDomainsDesc"] || "Get a free subdomain like yourname.linkulike.com. Perfect for branding and easy to remember."}
                 </p>
               </CardContent>
             </Card>
-
             <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
               <CardHeader>
                 <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mb-4">
                   <Users className="w-6 h-6 text-indigo-600" />
                 </div>
-                <CardTitle>Social Integration</CardTitle>
+                <CardTitle>{t["featureSocial"] || "Social Integration"}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-gray-600">
-                  Connect all your social media profiles with beautiful icons and seamless integration.
+                  {t["featureSocialDesc"] || "Connect all your social media profiles with beautiful icons and seamless integration."}
                 </p>
               </CardContent>
             </Card>
@@ -213,76 +178,76 @@ export default async function LandingPage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Simple, Transparent Pricing
+              {t["pricing"] || "Simple, Transparent Pricing"}
             </h2>
             <p className="text-xl text-gray-600">
-              Start free, upgrade when you need more features.
+              {t["pricingDesc"] || "Start free, upgrade when you need more features."}
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
             <Card className="border-2 border-gray-200">
               <CardHeader className="text-center">
-                <CardTitle className="text-2xl">Free</CardTitle>
+                <CardTitle className="text-2xl">{t["freePlan"] || "Free"}</CardTitle>
                 <div className="text-4xl font-bold">$0</div>
-                <p className="text-gray-600">Forever free</p>
+                <p className="text-gray-600">{t["freePlanDesc"] || "Forever free"}</p>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center">
                   <Check className="w-5 h-5 text-green-500 mr-3" />
-                  <span>1 bio link page</span>
+                  <span>{t["freePlan1"] || "1 bio link page"}</span>
                 </div>
                 <div className="flex items-center">
                   <Check className="w-5 h-5 text-green-500 mr-3" />
-                  <span>Basic themes</span>
+                  <span>{t["freePlan2"] || "Basic themes"}</span>
                 </div>
                 <div className="flex items-center">
                   <Check className="w-5 h-5 text-green-500 mr-3" />
-                  <span>Analytics</span>
+                  <span>{t["freePlan3"] || "Analytics"}</span>
                 </div>
                 <div className="flex items-center">
                   <Check className="w-5 h-5 text-green-500 mr-3" />
-                  <span>Mobile optimized</span>
+                  <span>{t["freePlan4"] || "Mobile optimized"}</span>
                 </div>
-                <Link href="/auth/register" className="block">
-                  <Button className="w-full">Get Started Free</Button>
+                <Link href="/register" className="block">
+                  <Button className="w-full">{t["start"] || "Get Started Free"}</Button>
                 </Link>
               </CardContent>
             </Card>
 
             <Card className="border-2 border-blue-500 relative">
               <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                <Badge className="bg-blue-500 text-white">Most Popular</Badge>
+                <Badge className="bg-blue-500 text-white">{t["mostPopular"] || "Most Popular"}</Badge>
               </div>
               <CardHeader className="text-center">
                 <CardTitle className="text-2xl">Pro</CardTitle>
                 <div className="text-4xl font-bold">$9</div>
-                <p className="text-gray-600">per month</p>
+                <p className="text-gray-600">{t["proPlanDesc"] || "per month"}</p>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center">
                   <Check className="w-5 h-5 text-green-500 mr-3" />
-                  <span>Unlimited bio link pages</span>
+                  <span>{t["proPlan1"] || "Unlimited bio link pages"}</span>
                 </div>
                 <div className="flex items-center">
                   <Check className="w-5 h-5 text-green-500 mr-3" />
-                  <span>Premium themes</span>
+                  <span>{t["proPlan2"] || "Premium themes"}</span>
                 </div>
                 <div className="flex items-center">
                   <Check className="w-5 h-5 text-green-500 mr-3" />
-                  <span>Advanced analytics</span>
+                  <span>{t["proPlan3"] || "Advanced analytics"}</span>
                 </div>
                 <div className="flex items-center">
                   <Check className="w-5 h-5 text-green-500 mr-3" />
-                  <span>Custom domains</span>
+                  <span>{t["proPlan4"] || "Advanced customization"}</span>
                 </div>
                 <div className="flex items-center">
                   <Check className="w-5 h-5 text-green-500 mr-3" />
-                  <span>Priority support</span>
+                  <span>{t["proPlan5"] || "Priority support"}</span>
                 </div>
-                <Link href="/auth/register" className="block">
+                <Link href="/register" className="block">
                   <Button className="w-full bg-blue-500 hover:bg-blue-600">
-                    Start Pro Trial
+                    {t["proPlanCta"] || "Start Pro Trial"}
                   </Button>
                 </Link>
               </CardContent>
@@ -295,14 +260,14 @@ export default async function LandingPage() {
       <section className="py-20 px-4">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-4xl font-bold text-gray-900 mb-4">
-            Ready to Create Your Bio Link Page?
+            {t["ctaTitle"] || "Ready to Create Your Bio Link Page?"}
           </h2>
           <p className="text-xl text-gray-600 mb-8">
-            Join thousands of creators who are already using Linkulike to grow their online presence.
+            {t["ctaText"] || "Join thousands of creators who are already using LikeUlike to grow their online presence."}
           </p>
-          <Link href="/auth/register">
+          <Link href="/register">
             <Button size="lg" className="text-lg px-8 py-6">
-              Create Your Bio Link Page
+              {t["ctaCta"] || "Create Your Bio Link Page"}
               <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
           </Link>
@@ -318,32 +283,32 @@ export default async function LandingPage() {
                 <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
                   <span className="text-white font-bold text-sm">L</span>
                 </div>
-                <span className="font-bold text-xl">Linkulike</span>
+                <span className="font-bold text-xl">linkulike</span>
               </div>
               <p className="text-gray-400">
-                The ultimate bio link platform for creators and entrepreneurs.
+                {t["footerClaim"] || "The ultimate bio link platform for creators and entrepreneurs."}
               </p>
             </div>
             <div>
-              <h3 className="font-semibold mb-4">Product</h3>
+              <h3 className="font-semibold mb-4">{t["footerProduct"] || "Product"}</h3>
               <ul className="space-y-2 text-gray-400">
-                <li><a href="#" className="hover:text-white">Features</a></li>
-                <li><a href="#" className="hover:text-white">Pricing</a></li>
-                <li><a href="#" className="hover:text-white">Themes</a></li>
-                <li><a href="#" className="hover:text-white">Analytics</a></li>
+                <li><a href="#" className="hover:text-white">{t["footerFeatures"] || "Features"}</a></li>
+                <li><a href="#" className="hover:text-white">{t["footerPricing"] || "Pricing"}</a></li>
+                <li><a href="#" className="hover:text-white">{t["footerTemplates"] || "Themes"}</a></li>
+                <li><a href="#" className="hover:text-white">{t["footerFaq"] || "Analytics"}</a></li>
               </ul>
             </div>
             <div>
-              <h3 className="font-semibold mb-4">Company</h3>
+              <h3 className="font-semibold mb-4">{t["footerSupport"] || "Company"}</h3>
               <ul className="space-y-2 text-gray-400">
-                <li><a href="#" className="hover:text-white">About</a></li>
-                <li><a href="#" className="hover:text-white">Blog</a></li>
-                <li><a href="#" className="hover:text-white">Careers</a></li>
-                <li><a href="#" className="hover:text-white">Contact</a></li>
+                <li><a href="#" className="hover:text-white">{t["footerHelp"] || "About"}</a></li>
+                <li><a href="#" className="hover:text-white">{t["footerContact"] || "Blog"}</a></li>
+                <li><a href="#" className="hover:text-white">{t["footerFaq"] || "Careers"}</a></li>
+                <li><a href="#" className="hover:text-white">{t["footerContact"] || "Contact"}</a></li>
               </ul>
             </div>
             <div>
-              <h3 className="font-semibold mb-4">Follow Us</h3>
+              <h3 className="font-semibold mb-4">{t["footerLegal"] || "Follow Us"}</h3>
               <div className="flex space-x-4">
                 <a href="#" className="text-gray-400 hover:text-white">
                   <Instagram className="w-5 h-5" />
@@ -361,7 +326,7 @@ export default async function LandingPage() {
             </div>
           </div>
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-            <p>&copy; 2024 Linkulike. All rights reserved.</p>
+            <p>&copy; 2024 linkulike. {t["footerCopyright"] || "All rights reserved."}</p>
           </div>
         </div>
       </footer>
