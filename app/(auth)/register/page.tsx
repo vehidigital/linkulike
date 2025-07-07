@@ -23,6 +23,7 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [lang, setLang] = useState<"de" | "en">("en")
   const router = useRouter()
+  const [debugInfo, setDebugInfo] = useState<any>(null)
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -99,25 +100,38 @@ export default function RegisterPage() {
           password: formData.password,
           redirect: false,
         })
-        console.log('signInResult', signInResult)
-        if (signInResult && !signInResult.error) {
-          // Erfolgreiche Registrierung - direkt zum Dashboard weiterleiten
+        // Debug: Session nach Login abfragen
+        let sessionJson = null
+        try {
+          const sessionRes = await fetch("/api/auth/session")
+          sessionJson = await sessionRes.json()
+        } catch (e) {
+          sessionJson = { error: String(e) }
+        }
+        // Debug: Cookies im Browser loggen
+        let cookies = ''
+        if (typeof window !== 'undefined') {
+          cookies = document.cookie
+        }
+        if (
+          signInResult &&
+          !signInResult.error &&
+          sessionJson &&
+          sessionJson.user &&
+          sessionJson.user.id
+        ) {
           toast({
             title: lang === "de" ? "Erfolg" : "Success",
             description: lang === "de" ? "Konto erfolgreich erstellt! Du wirst zum Dashboard weitergeleitet." : "Account created successfully! You will be redirected to dashboard.",
           })
-          
-          // Einfache Weiterleitung nach kurzer Verzögerung
           setTimeout(() => {
             window.location.href = "/dashboard"
           }, 1000)
         } else {
+          setDebugInfo({ signInResult, sessionJson, cookies })
           toast({
             title: lang === "de" ? "Fehler" : "Error",
-            description: (lang === "de" ? "Automatisches Login fehlgeschlagen. Bitte melde dich manuell an." : "Automatic login failed. Please sign in manually."),
-            action: (
-              <Link href="/login" className="underline text-blue-600 ml-2">{lang === "de" ? "Zum Login" : "Go to Login"}</Link>
-            ),
+            description: (lang === "de" ? "Automatisches Login fehlgeschlagen oder keine Session. Debug-Infos unten." : "Automatic login failed or no session. See debug info below."),
             variant: "destructive",
           })
         }
@@ -250,6 +264,15 @@ export default function RegisterPage() {
                 <ArrowRight className="ml-2 w-4 h-4" />
               </Button>
             </form>
+            {/* Debug-Infos anzeigen, falls vorhanden */}
+            {debugInfo && (
+              <div className="mt-8 p-4 bg-gray-100 rounded text-xs text-gray-800">
+                <div className="font-bold mb-2">Debug-Informationen (nur sichtbar bei Login-Fehler):</div>
+                <div><b>signInResult:</b> <pre>{JSON.stringify(debugInfo.signInResult, null, 2)}</pre></div>
+                <div><b>Session nach Login:</b> <pre>{JSON.stringify(debugInfo.sessionJson, null, 2)}</pre></div>
+                <div><b>Cookies:</b> <pre>{debugInfo.cookies}</pre></div>
+              </div>
+            )}
             <div className="mt-6 flex justify-between items-center text-sm">
               <Link href="/login" className="text-blue-600 hover:underline">
                 {t.alreadyRegistered} {t.login}
