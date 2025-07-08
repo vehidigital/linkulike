@@ -46,6 +46,7 @@ export async function GET() {
         isPremium: true,
         createdAt: true,
         updatedAt: true,
+        lastUsernameChange: true,
       },
     })
 
@@ -89,23 +90,35 @@ export async function PUT(request: NextRequest) {
     } = body
 
     // Check if username is being changed and if it's already taken
-    if (username) {
-      const existingUser = await prisma.user.findUnique({
-        where: { username },
-      })
-
+    let updateUsername = false;
+    let user = await prisma.user.findUnique({ where: { email: session.user.email } });
+    if (username && username !== user?.username) {
+      // Prüfe, ob Username schon vergeben ist
+      const existingUser = await prisma.user.findUnique({ where: { username } });
       if (existingUser && existingUser.email !== session.user.email) {
         return NextResponse.json(
           { error: "Username already taken" },
           { status: 400 }
-        )
+        );
       }
+      // Prüfe 30-Tage-Sperre
+      const now = new Date();
+      const THIRTY_DAYS = 1000 * 60 * 60 * 24 * 30;
+      if (user?.lastUsernameChange && now.getTime() - new Date(user.lastUsernameChange).getTime() < THIRTY_DAYS) {
+        const nextChange = new Date(new Date(user.lastUsernameChange).getTime() + THIRTY_DAYS);
+        return NextResponse.json(
+          { error: `You can change your username again on ${nextChange.toLocaleDateString()}.` },
+          { status: 400 }
+        );
+      }
+      updateUsername = true;
     }
 
     const updatedUser = await prisma.user.update({
       where: { email: session.user.email },
       data: {
-        username: username || undefined,
+        username: updateUsername ? username : undefined,
+        lastUsernameChange: updateUsername ? new Date() : undefined,
         displayName: displayName || undefined,
         bio: bio || undefined,
         avatarUrl: avatarUrl || undefined,
@@ -135,6 +148,7 @@ export async function PUT(request: NextRequest) {
         isPremium: true,
         createdAt: true,
         updatedAt: true,
+        lastUsernameChange: true,
       },
     })
 
