@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getAuthRedirect } from "@/lib/auth"
+import { getAuthRedirect } from "@/lib/auth-options"
 
 export async function GET(request: NextRequest) {
   try {

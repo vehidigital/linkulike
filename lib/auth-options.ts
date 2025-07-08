@@ -92,4 +92,19 @@ export const authOptions: NextAuthOptions = {
       },
     },
   },
+}
+
+export async function getAuthRedirect(): Promise<string> {
+  const isProd = process.env.NODE_ENV === "production";
+  
+  // In Produktion: Prüfe Hostname für Sprach-Subdomain
+  if (isProd && typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    if (hostname.startsWith('de.')) {
+      return '/de/login';
+    }
+  }
+  
+  // Standard: Login-Seite ohne Sprach-Präfix
+  return '/login';
 } 

@@ -105,13 +105,16 @@ export const ProfilePreview: React.FC<ProfilePreviewProps> = ({ displayName, use
   const effectiveTextColor = textColor || getContrastColor(bgColorForContrast)
   const footerColor = getContrastColor(bgColorForContrast);
 
+  // Immer ein neutraler Rand
+  const isLightTheme = bgColorForContrast === '#f3f4f6' || bgColorForContrast === '#fff' || (typeof bgColorForContrast === 'string' && bgColorForContrast.toLowerCase().includes('e5e7eb'));
+
   // Logging für Debugging
   console.log('ProfilePreview avatarUrl:', avatarUrl);
 
   return (
     <div
-      className="w-[340px] max-w-full rounded-[2.2rem] shadow-2xl mx-auto relative overflow-visible flex flex-col items-center justify-start"
-      style={{ aspectRatio: '9/19', background: bg, boxShadow: '0 8px 32px 0 rgba(31,38,135,0.18)', padding: '2.5rem 1.2rem 2rem 1.2rem' }}
+      className={`w-[320px] max-w-full rounded-[2.2rem] mx-auto relative overflow-visible flex flex-col items-center justify-start border border-gray-200 ${isLightTheme ? 'shadow-md' : 'shadow-sm'}`}
+      style={{ aspectRatio: '9/19', background: bg, boxShadow: isLightTheme ? '0 2px 12px 0 rgba(0,0,0,0.06)' : '0 1.5px 6px 0 rgba(0,0,0,0.04)', padding: '2.5rem 1.2rem 2rem 1.2rem' }}
     >
       <div className="w-full max-w-md mx-auto space-y-8">
         {/* Profile Header */}
@@ -171,12 +174,12 @@ export const ProfilePreview: React.FC<ProfilePreviewProps> = ({ displayName, use
         </div>
         {/* Action Buttons */}
         <div className="flex justify-center space-x-4 pt-4">
-          <button type="button" className="rounded px-4 py-2 flex items-center" style={{ color: footerColor }}><svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" /></svg>Like</button>
-          <button type="button" className="rounded px-4 py-2 flex items-center" style={{ color: footerColor }}><svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v16h16V4H4zm4 4h8v8H8V8z" /></svg>Share</button>
+                  <button type="button" className="rounded px-4 py-2 flex items-center" style={{ color: footerColor }}><svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" /></svg>{t.like}</button>
+        <button type="button" className="rounded px-4 py-2 flex items-center" style={{ color: footerColor }}><svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v16h16V4H4zm4 4h8v8H8V8z" /></svg>{t.share}</button>
         </div>
         {/* Footer */}
         <div className="text-center text-sm opacity-60" style={{ color: footerColor }}>
-          <p>Powered by Linkulike</p>
+          <p>{currentLang === "de" ? "Powered by Linkulike" : "Powered by Linkulike"}</p>
         </div>
       </div>
     </div>

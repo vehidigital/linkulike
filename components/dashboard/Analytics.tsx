@@ -16,7 +16,9 @@ interface Link {
 }
 
 interface AnalyticsProps {
-  links: Link[];
+  links: any[];
+  t?: any;
+  currentLang?: "de" | "en";
 }
 
 interface ClickData {
@@ -24,7 +26,8 @@ interface ClickData {
   clicks: number;
 }
 
-export default function Analytics({ links }: AnalyticsProps) {
+export default function Analytics({ links, t: tProp, currentLang = "en" }: AnalyticsProps) {
+  const t = tProp || getTranslations(currentLang);
   const [timeRange, setTimeRange] = useState("7d");
   const [clickData, setClickData] = useState<ClickData[]>([]);
 

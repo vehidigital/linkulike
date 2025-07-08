@@ -3,21 +3,20 @@
 import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
-import { Plus, Settings, Eye, BarChart3, Palette, User } from "lucide-react"
+import { Plus, BarChart3, TrendingUp, Users, Link as LinkIcon, Eye, Copy } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "@/hooks/use-toast"
 import LinkEditor from "@/components/dashboard/LinkEditor"
 import ProfileEditor from "@/components/dashboard/ProfileEditor"
 import Analytics from "@/components/dashboard/Analytics"
 import ThemeEditor from "@/components/dashboard/ThemeEditor"
 import { ProfilePreview } from "@/components/profile/ProfilePreview"
-import { LangDropdown } from "@/components/LangDropdown"
+import { AppHeader } from "@/components/navigation/app-header"
 import { getTranslations } from "@/lib/i18n"
+import { Sidebar } from "@/components/navigation/sidebar"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { LangDropdown } from "@/components/LangDropdown"
 
 interface Link {
   id: string
@@ -120,7 +119,6 @@ export default function Dashboard() {
         setLinks(linksData)
       } else {
         console.log('Links API failed:', linksRes.status)
-        // Bei 401 nicht zur Login-Seite weiterleiten, nur leeres Array setzen
         setLinks([])
       }
       
@@ -129,7 +127,6 @@ export default function Dashboard() {
         setProfile(profileData)
       } else {
         console.log('Profile API failed:', profileRes.status)
-        // Bei 401 nicht zur Login-Seite weiterleiten, nur null setzen
         setProfile(null)
       }
     } catch (error) {
@@ -250,7 +247,7 @@ export default function Dashboard() {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p className="text-lg text-gray-600">Loading your session...</p>
+          <p className="text-lg text-gray-600">{t.loading || "Lädt..."}</p>
         </div>
       </div>
     )
@@ -270,216 +267,189 @@ export default function Dashboard() {
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center">
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">Welcome to your Dashboard!</h1>
-            <p className="text-gray-600 mb-8">Your profile is being loaded. You can start creating your bio links.</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-4">{t.dashboardTitle}</h1>
+            <p className="text-gray-600 mb-8">{t.dashboardSubtitle}</p>
             <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-gray-900 mx-auto mb-4"></div>
-            <p className="text-sm text-gray-500">Loading your profile...</p>
+                          <p className="text-sm text-gray-500">{t.loading}</p>
           </div>
         </div>
       </div>
     )
   }
 
-  // Debug-Logging für Props
-  console.log('Dashboard profile:', profile)
-  console.log('Dashboard editProfile:', editProfile)
-  console.log('Dashboard avatarUrl für Preview:', activeTab === 'profile' && editProfile ? editProfile?.avatarUrl : profile.avatarUrl)
-
+  // Profillink immer ohne Sprach-Subdomain generieren
   const publicUrl = `http://linkulike.local:3000/${profile.username}`
 
+  // Calculate stats
+  const totalClicks = links.reduce((total, link) => total + (link as any).clicks?.length || 0, 0)
+  const activeLinks = links.filter(link => link.isActive).length
+
+  // Logout-Handler für Sidebar
+  const handleLogout = async () => {
+    if (typeof window !== 'undefined') {
+      const { signOut } = await import("next-auth/react")
+      await signOut({ redirect: false })
+      router.push("/login")
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/* Main Dashboard Content */}
-          <div className="flex-1">
-            {/* Header */}
-            <div className="mb-8">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900">{t.dashboardTitle || "Dashboard"}</h1>
-                  <p className="text-gray-600 mt-2">
-                    {t.dashboardSubtitle || "Manage your bio links and customize your profile"}
-                  </p>
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar */}
+      <Sidebar
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        profile={profile ? { displayName: profile.displayName, avatarUrl: profile.avatarUrl } : null}
+        onLogout={handleLogout}
+      />
+      {/* Main Content Wrapper */}
+      <div className="flex-1 flex flex-col min-h-screen">
+        {/* Topbar nur für Sprache/User und Profil-Link-Buttons */}
+        <div className="sticky top-0 z-30 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60 flex items-center justify-end h-16 px-6">
+          <div className="flex items-center gap-4">
+            <LangDropdown currentLang={lang} pathname={typeof window !== 'undefined' ? window.location.pathname : '/dashboard'} />
+            {/* Profil-Link Aktionen immer sichtbar */}
+            {profile && (
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(publicUrl, '_blank')}
+                  className="flex items-center space-x-2"
+                >
+                  <Eye className="h-4 w-4" />
+                  <span className="hidden md:inline">{t.viewProfile || "Profil anzeigen"}</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {navigator.clipboard.writeText(publicUrl)}}
+                  className="flex items-center space-x-2"
+                >
+                  <Copy className="h-4 w-4" />
+                  <span className="hidden md:inline">{t.copyLink || "Link kopieren"}</span>
+                </Button>
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={profile.avatarUrl} alt={profile.displayName} />
+                <AvatarFallback>{profile.displayName?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
+              </Avatar>
+            </div>
+          </div>
+        </div>
+        {/* Main Content */}
+        <div className="flex-1 container mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-row gap-8">
+          {/* Main Content Area */}
+          <div className="flex-1 space-y-8">
+            {/* Tab-abhängige große Überschrift */}
+            {activeTab === "links" && (
+              <h1 className="text-3xl font-bold text-gray-900 mb-8">{t.yourLinks || "Links verwalten"}</h1>
+            )}
+            {activeTab === "profile" && (
+              <h1 className="text-3xl font-bold text-gray-900 mb-8">{t.profileSettings || "Profil-Einstellungen"}</h1>
+            )}
+            {activeTab === "theme" && (
+              <h1 className="text-3xl font-bold text-gray-900 mb-8">{t.themeAppearance || "Design & Aussehen"}</h1>
+            )}
+            {activeTab === "analytics" && (
+              <h1 className="text-3xl font-bold text-gray-900 mb-8">{t.analytics || "Analytics"}</h1>
+            )}
+            {/* Tab Content */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              {activeTab === "links" && (
+                <div className="p-8">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h2 className="text-xl font-semibold text-gray-900">{t.yourLinks}</h2>
+                      <p className="text-gray-600 mt-1">{t.dashboardSubtitle}</p>
+                    </div>
+                    <Button onClick={handleAddLink} className="flex items-center space-x-2">
+                      <Plus className="w-4 h-4" />
+                                              <span>{t.addLink}</span>
+                    </Button>
+                  </div>
+                  <LinkEditor
+                    links={links}
+                    onUpdate={handleUpdateLinks}
+                    onDelete={handleDeleteLink}
+                    currentLang={lang}
+                    t={t}
+                  />
                 </div>
-                <div className="flex items-center space-x-4">
-                  <LangDropdown currentLang={lang} pathname={typeof window !== 'undefined' ? window.location.pathname : '/dashboard'} />
-                  <Button
-                    variant="outline"
-                    onClick={() => window.open(publicUrl, '_blank')}
-                  >
-                    <Eye className="w-4 h-4 mr-2" />
-                    {t.viewProfile || "View Profile"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => navigator.clipboard.writeText(publicUrl)}
-                  >
-                    {t.copyLink || "Copy Link"}
-                  </Button>
+              )}
+              {activeTab === "profile" && (
+                <div className="p-8">
+                  <div className="mb-6">
+                    <h2 className="text-xl font-semibold text-gray-900">{t.profileSettings}</h2>
+                    <p className="text-gray-600 mt-1">{t.profileSettingsSubtitle}</p>
+                  </div>
+                  <ProfileEditor
+                    profile={profile}
+                    onUpdate={handleProfileUpdate}
+                    editProfile={editProfile}
+                    setEditProfile={setEditProfile}
+                    fetchProfile={fetchData}
+                    isProUser={profile.isPremium || false}
+                    t={t}
+                    currentLang={lang}
+                  />
                 </div>
+              )}
+              {activeTab === "theme" && (
+                <div className="p-8">
+                  <div className="mb-6">
+                    <h2 className="text-xl font-semibold text-gray-900">{t.themeAppearance}</h2>
+                    <p className="text-gray-600 mt-1">{t.themeAppearanceSubtitle}</p>
+                  </div>
+                  <ThemeEditor
+                    profile={pendingProfile || profile}
+                    onUpdate={async (updatedProfile) => {
+                      setPendingProfile(updatedProfile);
+                      await handleThemeUpdate(updatedProfile);
+                    }}
+                    isProUser={Boolean(profile.isPremium)}
+                    setPendingProfile={setPendingProfile}
+                    t={t}
+                    currentLang={lang}
+                  />
+                </div>
+              )}
+              {activeTab === "analytics" && (
+                <div className="p-8">
+                  <div className="mb-6">
+                    <h2 className="text-xl font-semibold text-gray-900">{t.analytics}</h2>
+                    <p className="text-gray-600 mt-1">{t.analyticsSubtitle}</p>
+                  </div>
+                  <Analytics links={links} t={t} currentLang={lang} />
+                </div>
+              )}
+            </div>
+          </div>
+          {/* Profile Preview - Sticky Right Sidebar */}
+          <div className="hidden lg:block lg:w-80">
+            <div className="sticky top-24">
+              {/* Kleines Live Preview Badge */}
+              <div className="flex items-center gap-2 mb-2">
+                <span className="inline-block bg-blue-50 text-blue-700 text-xs font-semibold px-3 py-1 rounded-full">{t.livePreviewBadge || "Live Preview"}</span>
+              </div>
+              <div className="flex justify-center">
+                <ProfilePreview
+                  displayName={activeTab === 'profile' && editProfile ? editProfile.displayName : (activeTab === 'theme' && pendingProfile ? pendingProfile.displayName : profile.displayName)}
+                  username={profile.username}
+                  bio={activeTab === 'profile' && editProfile ? editProfile.bio : (activeTab === 'theme' && pendingProfile ? pendingProfile.bio : profile.bio)}
+                  avatarUrl={activeTab === 'profile' && editProfile ? editProfile.avatarUrl : (activeTab === 'theme' && pendingProfile ? pendingProfile.avatarUrl : profile.avatarUrl)}
+                  links={links}
+                  theme={activeTab === 'theme' && pendingProfile ? (pendingProfile.buttonStyle === "gradient" ? pendingProfile.backgroundGradient : pendingProfile.backgroundColor) : (profile.buttonStyle === "gradient" ? profile.backgroundGradient : profile.backgroundColor)}
+                  buttonStyle={activeTab === 'theme' && pendingProfile ? pendingProfile.buttonStyle : profile.buttonStyle}
+                  buttonColor={activeTab === 'theme' && pendingProfile ? pendingProfile.buttonColor : profile.buttonColor}
+                  buttonGradient={activeTab === 'theme' && pendingProfile ? pendingProfile.buttonGradient : profile.buttonGradient}
+                  currentLang={lang}
+                  textColor={activeTab === 'theme' && pendingProfile ? pendingProfile.textColor : profile.textColor}
+                />
               </div>
             </div>
-
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <BarChart3 className="w-6 h-6 text-blue-600" />
-                    </div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">{t.statsTotalClicks || "Total Clicks"}</p>
-                      <p className="text-2xl font-bold text-gray-900">
-                        {links.reduce((total, link) => total + (link as any).clicks?.length || 0, 0)}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center">
-                    <div className="p-2 bg-green-100 rounded-lg">
-                      <Plus className="w-6 h-6 text-green-600" />
-                    </div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">{t.statsActiveLinks || "Active Links"}</p>
-                      <p className="text-2xl font-bold text-gray-900">
-                        {links.filter(link => link.isActive).length}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center">
-                    <div className="p-2 bg-purple-100 rounded-lg">
-                      <User className="w-6 h-6 text-purple-600" />
-                    </div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">{t.statsProfileViews || "Profile Views"}</p>
-                      <p className="text-2xl font-bold text-gray-900">0</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center">
-                    <div className="p-2 bg-orange-100 rounded-lg">
-                      <Palette className="w-6 h-6 text-orange-600" />
-                    </div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">{t.statsTheme || "Theme"}</p>
-                      <p className="text-2xl font-bold text-gray-900 capitalize">
-                        {profile.theme}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Main Content */}
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="links">{t.links}</TabsTrigger>
-                <TabsTrigger value="profile">{t.profile}</TabsTrigger>
-                <TabsTrigger value="theme">{t.design}</TabsTrigger>
-                <TabsTrigger value="analytics">{t.analytics || "Analytics"}</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="links" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle>{t.yourLinks || "Your Links"}</CardTitle>
-                      <Button onClick={handleAddLink}>
-                        <Plus className="w-4 h-4 mr-2" />
-                        {t.addLink}
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <LinkEditor
-                      links={links}
-                      onUpdate={handleUpdateLinks}
-                      onDelete={handleDeleteLink}
-                    />
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="profile" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>{t.profileSettings || "Profile Settings"}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ProfileEditor
-                      profile={profile}
-                      onUpdate={handleProfileUpdate}
-                      editProfile={editProfile}
-                      setEditProfile={setEditProfile}
-                      fetchProfile={fetchData}
-                      isProUser={profile.isPremium || false}
-                    />
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="theme" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>{t.themeAppearance || "Theme & Appearance"}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ThemeEditor
-                      profile={pendingProfile || profile}
-                      onUpdate={async (updatedProfile) => {
-                        setPendingProfile(updatedProfile);
-                        await handleThemeUpdate(updatedProfile);
-                      }}
-                      isProUser={Boolean(profile.isPremium)}
-                      setPendingProfile={setPendingProfile}
-                    />
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="analytics" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>{t.analytics || "Analytics"}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <Analytics links={links} />
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
-          </div>
-          {/* Smartphone Bio Preview */}
-          <div className="hidden lg:block min-w-[320px] max-w-[340px]">
-            <ProfilePreview
-              displayName={activeTab === 'profile' && editProfile ? editProfile.displayName : (activeTab === 'theme' && pendingProfile ? pendingProfile.displayName : profile.displayName)}
-              username={profile.username}
-              bio={activeTab === 'profile' && editProfile ? editProfile.bio : (activeTab === 'theme' && pendingProfile ? pendingProfile.bio : profile.bio)}
-              avatarUrl={activeTab === 'profile' && editProfile ? editProfile.avatarUrl : (activeTab === 'theme' && pendingProfile ? pendingProfile.avatarUrl : profile.avatarUrl)}
-              links={links}
-              theme={activeTab === 'theme' && pendingProfile ? (pendingProfile.buttonStyle === "gradient" ? pendingProfile.backgroundGradient : pendingProfile.backgroundColor) : (profile.buttonStyle === "gradient" ? profile.backgroundGradient : profile.backgroundColor)}
-              buttonStyle={activeTab === 'theme' && pendingProfile ? pendingProfile.buttonStyle : profile.buttonStyle}
-              buttonColor={activeTab === 'theme' && pendingProfile ? pendingProfile.buttonColor : profile.buttonColor}
-              buttonGradient={activeTab === 'theme' && pendingProfile ? pendingProfile.buttonGradient : profile.buttonGradient}
-              currentLang={lang}
-              textColor={activeTab === 'theme' && pendingProfile ? pendingProfile.textColor : profile.textColor}
-            />
           </div>
         </div>
       </div>

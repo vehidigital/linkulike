@@ -32,15 +32,18 @@ interface UserProfile {
 }
 
 interface ProfileEditorProps {
-  profile: UserProfile;
-  onUpdate: (profile: UserProfile) => void;
-  editProfile?: { displayName: string; bio: string; avatarUrl: string } | null;
-  setEditProfile?: (profile: { displayName: string; bio: string; avatarUrl: string }) => void;
-  fetchProfile?: () => void;
+  profile: any;
+  onUpdate: any;
+  editProfile: any;
+  setEditProfile: any;
+  fetchProfile: any;
   isProUser: boolean;
+  t?: any;
+  currentLang?: "de" | "en";
 }
 
-export default function ProfileEditor({ profile, onUpdate, editProfile, setEditProfile, fetchProfile, isProUser }: ProfileEditorProps) {
+export default function ProfileEditor({ profile, onUpdate, editProfile, setEditProfile, fetchProfile, isProUser, t: tProp, currentLang = "en" }: ProfileEditorProps) {
+  const t = tProp || getTranslations(currentLang);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -52,7 +55,7 @@ export default function ProfileEditor({ profile, onUpdate, editProfile, setEditP
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Get translations
-  const t = getTranslations(lang);
+  // const t = getTranslations(lang); // This line is now redundant as t is passed as a prop
 
   // Detect language from hostname
   useEffect(() => {

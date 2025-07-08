@@ -34,7 +34,7 @@ export function Footer({ lang: propLang, t: propT }: { lang?: "de" | "en", t?: a
               <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-sm">L</span>
               </div>
-              <span className="font-bold text-xl text-gray-900">LikeUlike</span>
+              <span className="font-bold text-xl text-gray-900">Linkulike</span>
             </div>
             <p className="text-gray-500 max-w-xs">{t.footerClaim}</p>
           </div>
@@ -68,7 +68,7 @@ export function Footer({ lang: propLang, t: propT }: { lang?: "de" | "en", t?: a
             <div className="mb-2">
               <LangDropdown currentLang={currentLang} pathname={typeof window !== 'undefined' ? window.location.pathname : '/'} />
             </div>
-            <span className="text-xs text-gray-400">&copy; 2024 LikeUlike. {t.footerCopyright}</span>
+            <span className="text-xs text-gray-400">&copy; 2024 Linkulike. {t.footerCopyright}</span>
           </div>
         </div>
       </div>

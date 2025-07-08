@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
+import { getTranslations } from "@/lib/i18n";
 
 interface UserProfile {
   username: string;
@@ -30,6 +31,8 @@ interface ThemeEditorProps {
   onUpdate: (profile: UserProfile) => void;
   isProUser: boolean;
   setPendingProfile: (profile: UserProfile) => void;
+  t?: any;
+  currentLang?: "de" | "en";
 }
 
 const THEME_PRESETS = [
@@ -110,7 +113,8 @@ const FONT_OPTIONS = [
   { value: "Playfair Display", label: "Playfair Display (Classic)" },
 ];
 
-export default function ThemeEditor({ profile, onUpdate, isProUser, setPendingProfile }: ThemeEditorProps) {
+export default function ThemeEditor({ profile, onUpdate, isProUser, setPendingProfile, t: tProp, currentLang = "en" }: ThemeEditorProps) {
+  const t = tProp || getTranslations(currentLang);
   const [isGradient, setIsGradient] = useState(profile.buttonStyle === 'gradient');
   const [selectedPreset, setSelectedPreset] = useState<string>(profile.theme || "default");
   const [isSaving, setIsSaving] = useState(false);
@@ -170,43 +174,47 @@ export default function ThemeEditor({ profile, onUpdate, isProUser, setPendingPr
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Theme auswählen</CardTitle>
+          <CardTitle>{t.themeSelectTitle}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center mb-4 gap-2">
-            <span>Uni-Farbe</span>
+            <span>{t.uniColorHint}</span>
             <Checkbox checked={isGradient} onCheckedChange={handleToggle} id="gradient-toggle" />
-            <span>Gradient</span>
+            <span>{t.gradientHint}</span>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {THEME_PRESETS.map((preset) => (
               <button
                 key={preset.id}
                 onClick={() => handlePresetSelect(preset.id)}
-                className={`relative p-4 rounded-lg border-2 transition-colors flex flex-col items-center justify-center gap-2 ${selectedPreset === preset.id ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200'}`}
+                className={`relative p-4 rounded-lg border-2 transition-colors flex flex-col items-center justify-center gap-2 
+                  ${selectedPreset === preset.id ? 'border-blue-500 ring-2 ring-blue-200' : preset.id === 'light' ? 'border-gray-300 bg-gray-50 shadow-sm' : 'border-gray-200'}
+                `}
                 style={{
                   background: isGradient ? preset.backgroundGradient : preset.backgroundColor,
+                  color: preset.id === 'light' ? '#222' : (isGradient ? '#fff' : preset.textColor),
+                  boxShadow: preset.id === 'light' ? '0 1px 4px 0 rgba(0,0,0,0.04)' : undefined
                 }}
               >
-                <span className="font-semibold drop-shadow text-sm" style={{color: isGradient ? '#fff' : preset.textColor}}>{preset.name}</span>
+                <span className="font-semibold drop-shadow text-sm" style={{color: preset.id === 'light' ? '#222' : (isGradient ? '#fff' : preset.textColor)}}>{preset.name}</span>
               </button>
             ))}
           </div>
           <div className="flex items-center gap-4 mt-4">
-            <label className="text-sm font-medium">Textfarbe</label>
+            <label className="text-sm font-medium">{t.textColorHint}</label>
             <button
               type="button"
               className={`w-8 h-8 rounded border ${profile.textColor === '#fff' ? 'ring-2 ring-blue-500' : ''}`}
               style={{ background: '#222', color: '#fff' }}
               onClick={() => handleTextColorChange('#fff')}
-              aria-label="Weiß"
+              aria-label={t.whiteTooltip}
             >A</button>
             <button
               type="button"
               className={`w-8 h-8 rounded border ${profile.textColor === '#222' ? 'ring-2 ring-blue-500' : ''}`}
               style={{ background: '#fff', color: '#222' }}
               onClick={() => handleTextColorChange('#222')}
-              aria-label="Schwarz"
+              aria-label={t.blackTooltip}
             >A</button>
             {isProUser && (
               <input
@@ -223,7 +231,7 @@ export default function ThemeEditor({ profile, onUpdate, isProUser, setPendingPr
             onClick={handleSave}
             disabled={isSaving}
           >
-            {isSaving ? 'Speichern...' : 'Theme speichern'}
+            {isSaving ? t.savingText : t.saveThemeButton}
           </button>
         </CardContent>
       </Card>

@@ -35,6 +35,7 @@ interface LinkEditorProps {
   onDelete: (linkId: string) => void;
   theme?: string;
   currentLang?: "de" | "en";
+  t?: any;
 }
 
 export const ICON_OPTIONS = [
@@ -76,10 +77,10 @@ function getColorPresets(theme = "Default") {
   ]
 }
 
-export default function LinkEditor({ links, onUpdate, onDelete, theme = "Default", currentLang = "en" }: LinkEditorProps) {
+export default function LinkEditor({ links, onUpdate, onDelete, theme = "Default", currentLang = "en", t: tProp }: LinkEditorProps) {
+  const t = tProp || getTranslations(currentLang);
   const [editingLink, setEditingLink] = useState<Link | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const t = getTranslations(currentLang);
 
   // Die Standardfarbe aus dem aktuellen Theme holen
   const themeKey = theme as ThemeKey;
@@ -225,7 +226,7 @@ export default function LinkEditor({ links, onUpdate, onDelete, theme = "Default
                               </p>
                               {link.useCustomColor && (
                                 <p className="text-xs text-blue-600">
-                                  Custom color
+                                  {t.customColor || "Custom color"}
                                 </p>
                               )}
                             </div>
@@ -233,7 +234,7 @@ export default function LinkEditor({ links, onUpdate, onDelete, theme = "Default
                           
                           <div className="flex items-center space-x-2">
                             <Badge variant={link.isActive ? "default" : "secondary"}>
-                              {link.isActive ? "Active" : "Inactive"}
+                              {link.isActive ? (t.active || "Active") : (t.inactive || "Inactive")}
                             </Badge>
                             
                             <Button
@@ -252,6 +253,7 @@ export default function LinkEditor({ links, onUpdate, onDelete, theme = "Default
                               variant="ghost"
                               size="sm"
                               onClick={() => handleEditLink(link)}
+                              title={t.editLink || "Edit Link"}
                             >
                               <Edit3 className="w-4 h-4" />
                             </Button>
@@ -260,6 +262,7 @@ export default function LinkEditor({ links, onUpdate, onDelete, theme = "Default
                               variant="ghost"
                               size="sm"
                               onClick={() => onDelete(link.id)}
+                              title={t.delete || "Delete"}
                               className="text-red-600 hover:text-red-700"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -277,11 +280,15 @@ export default function LinkEditor({ links, onUpdate, onDelete, theme = "Default
         </Droppable>
       </DragDropContext>
 
+      {/* Add Link Button */}
+      <Button onClick={() => setEditingLink({ id: '', title: '', url: '', icon: '', isActive: true, position: links.length })}>
+        {t.addLink || "+ Link hinzufügen"}
+      </Button>
       {/* Edit Link Dialog */}
       <Dialog open={isEditing} onOpenChange={setIsEditing}>
         <DialogContent className="sm:max-w-md bg-white opacity-100">
           <DialogHeader>
-            <DialogTitle>Edit Link</DialogTitle>
+            <DialogTitle>{t.editLink || "Link bearbeiten"}</DialogTitle>
           </DialogHeader>
           {editingLink && (
             <EditLinkForm
@@ -292,6 +299,7 @@ export default function LinkEditor({ links, onUpdate, onDelete, theme = "Default
                 setEditingLink(null);
               }}
               theme={theme}
+              t={t}
             />
           )}
         </DialogContent>
@@ -305,9 +313,10 @@ interface EditLinkFormProps {
   onSave: (link: Link) => void;
   onCancel: () => void;
   theme: string;
+  t: any;
 }
 
-function EditLinkForm({ link, onSave, onCancel, theme }: EditLinkFormProps) {
+function EditLinkForm({ link, onSave, onCancel, theme, t }: EditLinkFormProps) {
   const [formData, setFormData] = useState({
     title: link.title,
     url: link.url,
@@ -336,31 +345,31 @@ function EditLinkForm({ link, onSave, onCancel, theme }: EditLinkFormProps) {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Title
+          {t.title || "Titel"}
         </label>
         <Input
           value={formData.title}
           onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-          placeholder="Link title"
+          placeholder={t.titlePlaceholder || "Titel"}
           required
         />
       </div>
       
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          URL
+          {t.link || "Link"}
         </label>
         <Input
           value={formData.url}
           onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-          placeholder="https://example.com"
+          placeholder={t.linkPlaceholder || "https://..."}
           required
         />
       </div>
       
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Icon
+          {t.icon || "Icon"}
         </label>
         <div className="grid grid-cols-6 gap-2 max-h-32 overflow-y-auto">
           {ICON_OPTIONS.map((icon) => (
@@ -383,7 +392,7 @@ function EditLinkForm({ link, onSave, onCancel, theme }: EditLinkFormProps) {
       {/* Color Settings */}
       <div className="space-y-3">
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Farbe wählen
+          {t.color || "Farbe"}
         </label>
         <div className="flex gap-2 flex-wrap mb-2">
           {COLOR_PRESETS.map(preset => (
@@ -417,7 +426,7 @@ function EditLinkForm({ link, onSave, onCancel, theme }: EditLinkFormProps) {
                 type="checkbox"
                 checked={formData.useCustomColor}
                 onChange={e => setFormData(f => ({ ...f, useCustomColor: e.target.checked }))}
-              /> Eigene Farbe (Pro)
+              /> {t.customColorPro || "Eigene Farbe (Pro)"}
             </label>
           </div>
         )}
@@ -428,25 +437,25 @@ function EditLinkForm({ link, onSave, onCancel, theme }: EditLinkFormProps) {
             style={{ background: '#eee', color: '#222' }}
             onClick={() => setFormData(f => ({ ...f, textColorOverride: undefined }))}
             aria-label="Auto"
-          >A</button>
+          >{t.auto || "A"}</button>
           <button
             type="button"
             className={`w-8 h-8 rounded border ${formData.textColorOverride === 'light' ? 'ring-2 ring-blue-500' : ''}`}
             style={{ background: '#222', color: '#fff' }}
             onClick={() => setFormData(f => ({ ...f, textColorOverride: 'light' }))}
             aria-label="Hell"
-          >A</button>
+          >{t.light || "A"}</button>
           <button
             type="button"
             className={`w-8 h-8 rounded border ${formData.textColorOverride === 'dark' ? 'ring-2 ring-blue-500' : ''}`}
             style={{ background: '#fff', color: '#222' }}
             onClick={() => setFormData(f => ({ ...f, textColorOverride: 'dark' }))}
             aria-label="Dunkel"
-          >A</button>
+          >{t.dark || "A"}</button>
         </div>
         <div className="mb-2">
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Vorschau
+            {t.preview || "Vorschau"}
           </label>
           <SolidLinkButton
             title={formData.title}
@@ -458,10 +467,8 @@ function EditLinkForm({ link, onSave, onCancel, theme }: EditLinkFormProps) {
       </div>
       
       <div className="flex justify-end space-x-2">
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button type="submit">Save Changes</Button>
+        <Button type="button" variant="outline" onClick={onCancel}>{t.cancel || "Abbrechen"}</Button>
+        <Button type="submit">{t.saveChanges || "Änderungen speichern"}</Button>
       </div>
     </form>
   );
