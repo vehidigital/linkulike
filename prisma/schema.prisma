@@ -34,6 +34,27 @@ model User {
   lastUsernameChange  DateTime?
 
   links Link[]
+
+  // Neue Relationen
+  emailVerifications  EmailVerification[]
+  passwordResets      PasswordReset[]
+  emailChanges        EmailChange[]
+  loginLogs           LoginLog[]
+  subscriptions       Subscription[]
+  invoices            Invoice[]
+  paymentMethods      PaymentMethod[]
+  linkClicks          LinkClick[]
+  profileViews        ProfileView[]
+  emailEvents         EmailEvent[]
+  optIns              OptIn[]
+  featureFlags        FeatureFlag[]
+  proStatuses         ProStatus[]
+  consents            Consent[]
+  auditLogs           AuditLog[]
+  legalAgreements     LegalAgreement[]
+  notifications       Notification[]
+  referrals           Referral[]
+  promoCodeRedemptions PromoCodeRedemption[]
 }
 
 model Link {
@@ -64,4 +85,214 @@ model LinkClick {
   clickedAt DateTime @default(now())
 
   link Link @relation(fields: [linkId], references: [id], onDelete: Cascade)
+
+  // Neue Relation
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+} 
+
+// --- Erweiterungen ab hier ---
+
+model EmailVerification {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  status    String
+  createdAt DateTime @default(now())
+}
+
+model PasswordReset {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  status    String
+  createdAt DateTime @default(now())
+}
+
+model EmailChange {
+  id            String   @id @default(uuid())
+  user          User     @relation(fields: [userId], references: [id])
+  userId        String
+  newEmail      String
+  token         String   @unique
+  expiresAt     DateTime
+  status        String
+  createdAt     DateTime @default(now())
+}
+
+model LoginLog {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+}
+
+model EmailEvent {
+  id         String   @id @default(uuid())
+  user       User     @relation(fields: [userId], references: [id])
+  userId     String
+  type       String
+  status     String
+  messageId  String?
+  timestamp  DateTime @default(now())
+}
+
+model OptIn {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  type      String
+  status    String
+  timestamp DateTime @default(now())
+}
+
+model Subscription {
+  id                     String   @id @default(uuid())
+  user                   User     @relation(fields: [userId], references: [id])
+  userId                 String
+  planId                 String
+  status                 String
+  paymentProvider        String
+  providerCustomerId     String
+  providerSubscriptionId String
+  start                  DateTime
+  end                    DateTime?
+  renewal                DateTime?
+  createdAt              DateTime @default(now())
+}
+
+model Invoice {
+  id         String   @id @default(uuid())
+  user       User     @relation(fields: [userId], references: [id])
+  userId     String
+  invoiceId  String
+  amount     Float
+  currency   String
+  status     String
+  pdfUrl     String?
+  createdAt  DateTime @default(now())
+  paidAt     DateTime?
+}
+
+model PaymentMethod {
+  id         String   @id @default(uuid())
+  user       User     @relation(fields: [userId], references: [id])
+  userId     String
+  type       String
+  last4      String?
+  brand      String?
+  exp        String?
+  providerId String?
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
+
+model ProfileView {
+  id         String   @id @default(uuid())
+  userId     String
+  viewedAt   DateTime @default(now())
+  ip         String?
+  country    String?
+  city       String?
+  device     String?
+  os         String?
+  browser    String?
+  referrer   String?
+  userAgent  String?
+  sessionId  String?
+  user       User     @relation(fields: [userId], references: [id])
+}
+
+model FeatureFlag {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  flag      String
+  enabled   Boolean
+  since     DateTime @default(now())
+  until     DateTime?
+}
+
+model ProStatus {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  isPro     Boolean
+  since     DateTime
+  until     DateTime?
+  source    String
+}
+
+model Consent {
+  id         String   @id @default(uuid())
+  user       User     @relation(fields: [userId], references: [id])
+  userId     String
+  type       String
+  acceptedAt DateTime
+  version    String
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  action    String
+  target    String?
+  details   String?
+  timestamp DateTime @default(now())
+}
+
+model LegalAgreement {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  type      String
+  version   String
+  acceptedAt DateTime
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  type      String
+  content   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Referral {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  code      String   @unique
+  referredBy String?
+  reward    String?
+  createdAt DateTime @default(now())
+}
+
+model PromoCode {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  discount  Float
+  validFrom DateTime
+  validTo   DateTime
+  maxUses   Int?
+  createdAt DateTime @default(now())
+  promoCodeRedemptions PromoCodeRedemption[]
+}
+
+model PromoCodeRedemption {
+  id        String   @id @default(uuid())
+  promoCode PromoCode @relation(fields: [promoCodeId], references: [id])
+  promoCodeId String
+  userId    String
+  redeemedAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
 } 

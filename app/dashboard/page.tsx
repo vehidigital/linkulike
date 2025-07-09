@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
-import { Plus, BarChart3, TrendingUp, Users, Link as LinkIcon, Eye, Copy } from "lucide-react"
+import { Plus, BarChart3, TrendingUp, Users, Link as LinkIcon, Eye, Copy, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "@/hooks/use-toast"
@@ -55,6 +55,7 @@ export default function Dashboard() {
   const [editProfile, setEditProfile] = useState<{ displayName: string; bio: string; avatarUrl: string } | null>(null);
   const [pendingProfile, setPendingProfile] = useState<UserProfile | null>(null);
   const [lang, setLang] = useState<"de" | "en">("en")
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     console.log('Dashboard useEffect - status:', status, 'session:', !!session)
@@ -279,6 +280,35 @@ export default function Dashboard() {
 
   // Profillink immer ohne Sprach-Subdomain generieren
   const publicUrl = `http://linkulike.local:3000/${profile.username}`
+  const handleCopyProfileUrl = async () => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(publicUrl);
+      } else {
+        // Fallback für unsichere Umgebungen/ältere Browser
+        const tempInput = document.createElement('input');
+        tempInput.value = publicUrl;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        document.execCommand('copy');
+        document.body.removeChild(tempInput);
+      }
+      setCopied(true);
+      toast({ title: t.linkCopied, description: t.copy });
+      setTimeout(() => setCopied(false), 2000);
+      console.log('Kopieren erfolgreich:', publicUrl);
+    } catch (err: unknown) {
+      console.error('Kopieren fehlgeschlagen:', err);
+      let msg = '';
+      if (err instanceof Error) {
+        msg = err.message;
+      } else {
+        msg = String(err);
+      }
+      window.alert('Kopieren fehlgeschlagen: ' + msg);
+      toast({ title: t.error, description: t.linkCopyFailed, variant: 'destructive' });
+    }
+  };
 
   // Calculate stats
   const totalClicks = links.reduce((total, link) => total + (link as any).clicks?.length || 0, 0)
@@ -323,11 +353,11 @@ export default function Dashboard() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => {navigator.clipboard.writeText(publicUrl)}}
+                  onClick={handleCopyProfileUrl}
                   className="flex items-center space-x-2"
                 >
-                  <Copy className="h-4 w-4" />
-                  <span className="hidden md:inline">{t.copyLink || "Link kopieren"}</span>
+                  {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                  <span className="hidden md:inline">{copied ? t.copied : t.copyLink}</span>
                 </Button>
               </div>
             )}

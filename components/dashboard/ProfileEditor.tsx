@@ -311,13 +311,29 @@ export default function ProfileEditor({ profile, onUpdate, editProfile, setEditP
   };
 
   const copyProfileUrl = async () => {
-    const url = `${window.location.origin}/${profile.username}`;
+    const url = `http://linkulike.local:3000/${profile.username}`;
     try {
-      await navigator.clipboard.writeText(url);
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const tempInput = document.createElement('input');
+        tempInput.value = url;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        document.execCommand('copy');
+        document.body.removeChild(tempInput);
+      }
       setCopied(true);
       toast({ title: t.linkCopied, description: "Profil-Link wurde in die Zwischenablage kopiert" });
       setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
+    } catch (err: unknown) {
+      let msg = '';
+      if (err instanceof Error) {
+        msg = err.message;
+      } else {
+        msg = String(err);
+      }
+      window.alert('Kopieren fehlgeschlagen: ' + msg);
       toast({ title: t.error, description: t.linkCopyFailed, variant: "destructive" });
     }
   };
@@ -336,7 +352,7 @@ export default function ProfileEditor({ profile, onUpdate, editProfile, setEditP
     return new Date(lastChange.getTime() + (1000 * 60 * 60 * 24 * 30));
   };
 
-  const publicUrl = `${window.location.origin}/${profile.username}`;
+  const publicUrl = `http://linkulike.local:3000/${profile.username}`;
 
   return (
     <div className="space-y-6">
@@ -359,8 +375,8 @@ export default function ProfileEditor({ profile, onUpdate, editProfile, setEditP
               onClick={copyProfileUrl}
               className="flex items-center gap-2"
             >
-              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-              {copied ? t.copied : t.copy}
+              {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+              <span>{copied ? t.copied : t.copy}</span>
             </Button>
           </div>
         </CardContent>
