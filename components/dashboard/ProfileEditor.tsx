@@ -42,6 +42,18 @@ interface ProfileEditorProps {
   currentLang?: "de" | "en";
 }
 
+// UUID-Helper für alle Browser
+function generateUUID() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  // Fallback: RFC4122 v4 compliant UUID
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
 export default function ProfileEditor({ profile, onUpdate, editProfile, setEditProfile, fetchProfile, isProUser, t: tProp, currentLang = "en" }: ProfileEditorProps) {
   const t = tProp || getTranslations(currentLang);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -89,25 +101,26 @@ export default function ProfileEditor({ profile, onUpdate, editProfile, setEditP
     onClientUploadComplete: async (res) => {
       if (res && res.length > 0) {
         const avatarUrl = res[0].url;
+        // Aktuelle Werte holen
+        const displayName = editData.displayName;
+        const bio = editData.bio;
         setEditData(prev => ({ ...prev, avatarUrl }));
         if (setEditProfile) setEditProfile({ 
-          displayName: editData.displayName, 
-          bio: editData.bio, 
+          displayName, 
+          bio, 
           avatarUrl 
         });
-        
-        // Save to profile
+        // Save to profile mit aktuellen Werten
         try {
           const response = await fetch("/api/user/profile", {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ...editData, avatarUrl }),
+            body: JSON.stringify({ displayName, bio, avatarUrl }),
           });
-          
           if (response.ok) {
             const updatedProfile = await response.json();
             onUpdate(updatedProfile);
-            if (typeof fetchProfile === 'function') fetchProfile();
+            if (typeof fetchProfile === 'function') fetchProfile(); // Profil neu laden
             toast({ title: t.success, description: t.avatarSaved });
           } else {
             toast({ title: t.error, description: t.avatarSaveFailed, variant: "destructive" });
@@ -118,6 +131,7 @@ export default function ProfileEditor({ profile, onUpdate, editProfile, setEditP
       } else {
         toast({ title: t.error, description: t.avatarUploadFailed, variant: "destructive" });
       }
+      setEditorOpen(false);
       setIsLoading(false);
     },
     onUploadError: (error: Error) => {
@@ -152,6 +166,15 @@ export default function ProfileEditor({ profile, onUpdate, editProfile, setEditP
       setOriginalImage(profile.avatarUrl);
     }
   }, [profile.avatarUrl, originalImage]);
+
+  // Track, ob sich Profilinfos geändert haben
+  const [hasProfileChanges, setHasProfileChanges] = useState(false);
+  useEffect(() => {
+    setHasProfileChanges(
+      editData.displayName !== profile.displayName ||
+      editData.bio !== profile.bio
+    );
+  }, [editData.displayName, editData.bio, profile.displayName, profile.bio]);
 
   const handleSaveProfile = async () => {
     setIsLoading(true);
@@ -240,13 +263,19 @@ export default function ProfileEditor({ profile, onUpdate, editProfile, setEditP
   };
 
   const handleCropComplete = async (croppedDataUrl: string) => {
-    setEditorOpen(false);
     setIsLoading(true);
     try {
       const blob = await (await fetch(croppedDataUrl)).blob();
-      const file = new File([blob], 'avatar.jpg', { type: 'image/jpeg' });
+      const ext = 'jpg';
+      const uniqueName = `avatar_${generateUUID()}.${ext}`;
+      const file = new File([blob], uniqueName, { type: 'image/jpeg' });
+      console.log('Starte Upload:', file);
       await startUpload([file]);
+      console.log('Upload abgeschlossen');
+      // File-Input nach Upload zurücksetzen
+      if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (e) {
+      console.error('Avatar-Upload-Fehler:', e);
       toast({ title: "Fehler", description: `Avatar konnte nicht gespeichert werden: ${e instanceof Error ? e.message : 'Unbekannter Fehler'}`, variant: "destructive" });
       setIsLoading(false);
     }
@@ -257,23 +286,23 @@ export default function ProfileEditor({ profile, onUpdate, editProfile, setEditP
     try {
       setEditData(prev => ({ ...prev, avatarUrl: "" }));
       if (setEditProfile) setEditProfile({ displayName: editData.displayName, bio: editData.bio, avatarUrl: "" });
-      
       const response = await fetch("/api/user/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...editData, avatarUrl: "" }),
       });
-      
       if (response.ok) {
         const updatedProfile = await response.json();
         onUpdate(updatedProfile);
         if (typeof fetchProfile === 'function') fetchProfile();
-              toast({ title: t.avatarRemoved, description: "Avatar wurde erfolgreich entfernt" });
-    } else {
+        toast({ title: t.avatarRemoved, description: "Avatar wurde erfolgreich entfernt" });
+        // File-Input nach Entfernen zurücksetzen
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      } else {
+        toast({ title: t.error, description: t.avatarRemoveFailed, variant: "destructive" });
+      }
+    } catch (e) {
       toast({ title: t.error, description: t.avatarRemoveFailed, variant: "destructive" });
-    }
-  } catch (e) {
-    toast({ title: t.error, description: t.avatarRemoveFailed, variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -355,292 +384,195 @@ export default function ProfileEditor({ profile, onUpdate, editProfile, setEditP
   const publicUrl = `http://linkulike.local:3000/${profile.username}`;
 
   return (
-    <div className="space-y-6">
-      {/* Profile URL Section */}
-      <Card>
-        <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-          <User className="w-5 h-5" />
-          {t.profileLink}
-        </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-3">
-            <div className="flex-1 p-3 bg-gray-50 rounded-lg border">
-              <code className="text-sm text-gray-700">{publicUrl}</code>
+    <div className="w-full max-w-md ml-0 mt-8 p-6 bg-white rounded-xl shadow flex flex-col items-center">
+      {/* Profil-Link */}
+      <div className="w-full flex items-center justify-center gap-2 mb-4">
+        <span className="text-gray-500 text-sm">{t.profileLink}:</span>
+        <span className="font-mono text-sm bg-gray-50 px-2 py-1 rounded border border-gray-200">{publicUrl}</span>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={copyProfileUrl}
+          className="ml-1"
+          title={t.copy}
+        >
+          {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+        </Button>
+      </div>
+      {/* Avatar mit Overlay-Buttons */}
+      <div className="relative group mb-4">
+        <Avatar className="w-28 h-28">
+          <AvatarImage src={editData.avatarUrl || undefined} alt="Avatar" />
+          <AvatarFallback>
+            <User className="w-12 h-12" />
+          </AvatarFallback>
+        </Avatar>
+        {/* Overlay-Buttons: sichtbar bei Hover oder immer auf Mobile */}
+        <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 sm:opacity-100">
+          <Button
+            variant="secondary"
+            size="icon"
+            onClick={handleAvatarEdit}
+            className="bg-white/90 hover:bg-white text-gray-800 shadow"
+            title="Neues Foto"
+          >
+            <Camera className="w-5 h-5" />
+          </Button>
+          {editData.avatarUrl && (
+            <>
+              <Button
+                variant="secondary"
+                size="icon"
+                onClick={handleAvatarEditExisting}
+                className="bg-white/90 hover:bg-white text-gray-800 shadow"
+                title="Bearbeiten"
+              >
+                <Edit className="w-5 h-5" />
+              </Button>
+              <Button
+                variant="secondary"
+                size="icon"
+                onClick={handleRemoveAvatar}
+                disabled={isLoading}
+                className="bg-white/90 hover:bg-white text-red-600 shadow"
+                title="Entfernen"
+              >
+                <X className="w-5 h-5" />
+              </Button>
+            </>
+          )}
+        </div>
+        <input
+          type="file"
+          accept="image/*"
+          ref={fileInputRef}
+          onChange={handleFileChange}
+          className="hidden"
+        />
+      </div>
+      {/* Display Name */}
+      <input
+        className="w-full text-xl font-semibold text-center mb-1 border-none focus:ring-2 focus:ring-primary/30 rounded bg-gray-50 py-2 px-3"
+        value={editData.displayName}
+        onChange={e => setEditData(prev => ({ ...prev, displayName: e.target.value }))}
+        placeholder={t.yourName}
+        maxLength={30}
+      />
+      {/* Username + Edit */}
+      <div className="flex items-center justify-center gap-2 text-gray-500 text-center mb-2">
+        <span>@{profile.username}</span>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setUsernameDialogOpen(true)}
+          className="p-1"
+          title={t.changeUsername}
+        >
+          <Edit className="w-4 h-4" />
+        </Button>
+      </div>
+      {/* Username-Dialog */}
+      <Dialog open={usernameDialogOpen} onOpenChange={setUsernameDialogOpen}>
+        <DialogContent className="sm:max-w-md bg-white shadow-xl rounded-xl border border-gray-200 p-6">
+          <DialogHeader>
+            <DialogTitle>{t.changeUsernameTitle}</DialogTitle>
+            <DialogDescription>
+              {t.changeUsernameDescription}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">{t.newUsername}</label>
+              <Input
+                value={usernameData.newUsername}
+                onChange={(e) => setUsernameData(prev => ({ ...prev, newUsername: e.target.value }))}
+                placeholder="neuer-username"
+              />
             </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">{t.confirmUsername}</label>
+              <Input
+                value={usernameData.confirmation}
+                onChange={(e) => setUsernameData(prev => ({ ...prev, confirmation: e.target.value }))}
+                placeholder="neuer-username"
+              />
+            </div>
+            {usernameError && (
+              <div className="text-sm text-red-600 bg-red-50 p-3 rounded-lg">
+                {usernameError}
+              </div>
+            )}
+            {!canChangeUsername() && (
+              <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4" />
+                {t.usernameChangeBlocked.replace('{date}', getNextUsernameChangeDate()?.toLocaleDateString() || '')}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
             <Button
               variant="outline"
-              size="sm"
-              onClick={copyProfileUrl}
-              className="flex items-center gap-2"
+              onClick={() => setUsernameDialogOpen(false)}
             >
-              {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
-              <span>{copied ? t.copied : t.copy}</span>
+              {t.cancel}
             </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Username Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>{t.username}</span>
-            <Dialog open={usernameDialogOpen} onOpenChange={setUsernameDialogOpen}>
-              <DialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!canChangeUsername()}
-                  className="flex items-center gap-2"
-                >
-                  <Edit className="w-4 h-4" />
-                  {t.changeUsername}
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md bg-white shadow-xl rounded-xl border border-gray-200 p-6">
-                <DialogHeader>
-                  <DialogTitle>{t.changeUsernameTitle}</DialogTitle>
-                  <DialogDescription>
-                    {t.changeUsernameDescription}
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">{t.newUsername}</label>
-                    <Input
-                      value={usernameData.newUsername}
-                      onChange={(e) => setUsernameData(prev => ({ ...prev, newUsername: e.target.value }))}
-                      placeholder="neuer-username"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">{t.confirmUsername}</label>
-                    <Input
-                      value={usernameData.confirmation}
-                      onChange={(e) => setUsernameData(prev => ({ ...prev, confirmation: e.target.value }))}
-                      placeholder="neuer-username"
-                    />
-                  </div>
-                  {usernameError && (
-                    <div className="text-sm text-red-600 bg-red-50 p-3 rounded-lg">
-                      {usernameError}
-                    </div>
-                  )}
-                  {!canChangeUsername() && (
-                    <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg flex items-center gap-2">
-                      <AlertTriangle className="w-4 h-4" />
-                      {t.usernameChangeBlocked.replace('{date}', getNextUsernameChangeDate()?.toLocaleDateString() || '')}
-                    </div>
-                  )}
-                </div>
-                <DialogFooter>
-                  <Button
-                    variant="outline"
-                    onClick={() => setUsernameDialogOpen(false)}
-                  >
-                    {t.cancel}
-                  </Button>
-                  <Button
-                    onClick={handleUsernameChange}
-                    disabled={isChangingUsername || !usernameData.newUsername || usernameData.newUsername !== usernameData.confirmation}
-                  >
-                    {isChangingUsername ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        {t.changingUsername}
-                      </>
-                    ) : (
-                      t.changeUsernameButton
-                    )}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-3">
-            <Badge variant="secondary" className="text-lg font-mono">
-              @{profile.username}
-            </Badge>
-            {!canChangeUsername() && (
-              <Badge variant="outline" className="text-xs">
-                {t.changeableOn.replace('{date}', getNextUsernameChangeDate()?.toLocaleDateString() || '')}
-              </Badge>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Profile Information */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>{t.profileInformation}</span>
-            {!isEditMode ? (
-                              <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsEditMode(true)}
-                  className="flex items-center gap-2"
-                >
-                  <Edit className="w-4 h-4" />
-                  {t.edit}
-                </Button>
-            ) : (
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCancelEdit}
-                  className="flex items-center gap-2"
-                >
-                  <X className="w-4 h-4" />
-                  {t.cancel}
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleSaveProfile}
-                  disabled={isLoading}
-                  className="flex items-center gap-2"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      {t.saving}
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4" />
-                      {t.save}
-                    </>
-                  )}
-                </Button>
-              </div>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {!isEditMode ? (
-            // View Mode
-            <div className="space-y-6">
-              {/* Avatar */}
-              <div className="flex items-center gap-4">
-                <Avatar className="w-20 h-20">
-                  <AvatarImage src={profile.avatarUrl || undefined} alt="Avatar" />
-                  <AvatarFallback>
-                    <User className="w-8 h-8" />
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <h3 className="font-semibold text-lg">{profile.displayName || t.noNameSet}</h3>
-                  <p className="text-gray-600">@{profile.username}</p>
-                </div>
-              </div>
-              
-              {/* Bio */}
-              {profile.bio && (
-                <div>
-                  <h4 className="font-medium text-sm text-gray-600 mb-2">{t.bio}</h4>
-                  <p className="text-gray-900 whitespace-pre-line">{profile.bio}</p>
-                </div>
+            <Button
+              onClick={handleUsernameChange}
+              disabled={isChangingUsername || !usernameData.newUsername || usernameData.newUsername !== usernameData.confirmation}
+            >
+              {isChangingUsername ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  {t.changingUsername}
+                </>
+              ) : (
+                t.changeUsernameButton
               )}
-            </div>
-          ) : (
-            // Edit Mode
-            <div className="space-y-6">
-              {/* Avatar Upload */}
-              <div className="space-y-4">
-                <label className="text-sm font-medium">{t.avatar}</label>
-                <div className="flex items-center gap-4">
-                  <Avatar className="w-20 h-20">
-                    <AvatarImage src={editData.avatarUrl || undefined} alt="Avatar" />
-                    <AvatarFallback>
-                      <User className="w-8 h-8" />
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex flex-col gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleAvatarEdit}
-                      className="flex items-center gap-2"
-                    >
-                      <Camera className="w-4 h-4" />
-                      {t.newPhoto}
-                    </Button>
-                    {editData.avatarUrl && (
-                      <>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleAvatarEditExisting}
-                          className="flex items-center gap-2"
-                        >
-                          <Edit className="w-4 h-4" />
-                          {t.editPhoto}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleRemoveAvatar}
-                          disabled={isLoading}
-                          className="flex items-center gap-2 text-red-600 hover:text-red-700"
-                        >
-                          <X className="w-4 h-4" />
-                          {t.removePhoto}
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </div>
-                <input
-                  type="file"
-                  accept="image/*"
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-              </div>
-
-              {/* Display Name */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">{t.displayName}</label>
-                <Input
-                  value={editData.displayName}
-                  onChange={(e) => setEditData(prev => ({ ...prev, displayName: e.target.value }))}
-                  placeholder={t.yourName}
-                  maxLength={30}
-                />
-              </div>
-
-              {/* Bio */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">{t.bio}</label>
-                <Textarea
-                  value={editData.bio}
-                  onChange={(e) => setEditData(prev => ({ ...prev, bio: e.target.value }))}
-                  placeholder={t.tellAboutYourself}
-                  rows={3}
-                  maxLength={160}
-                />
-                <p className="text-xs text-gray-500">
-                  {editData.bio.length}/160 {t.characters}
-                </p>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Bio */}
+      <textarea
+        className="w-full text-center text-gray-700 bg-gray-50 rounded p-2 mb-2 border-none focus:ring-2 focus:ring-primary/30"
+        value={editData.bio}
+        onChange={e => setEditData(prev => ({ ...prev, bio: e.target.value }))}
+        placeholder={t.tellAboutYourself}
+        rows={3}
+        maxLength={160}
+      />
+      <div className="text-xs text-gray-400 mb-4">{editData.bio.length}/160 {t.characters}</div>
+      {/* Save/Cancel nur wenn geändert */}
+      {hasProfileChanges && (
+        <div className="flex gap-2 mt-2">
+          <Button
+            size="sm"
+            onClick={handleSaveProfile}
+            disabled={isLoading}
+            className="flex items-center gap-2"
+          >
+            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            {isLoading ? t.saving : t.save}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleCancelEdit}
+            disabled={isLoading}
+            className="flex items-center gap-2"
+          >
+            <X className="w-4 h-4" />
+            {t.cancel}
+          </Button>
+        </div>
+      )}
       {/* Avatar Editor Modal */}
       {editorOpen && selectedImage && (
         <AvatarEditor
           image={selectedImage}
           onCropComplete={handleCropComplete}
           onCancel={handleAvatarEditorCancel}
+          isUploading={isUploading || isLoading}
         />
       )}
     </div>
