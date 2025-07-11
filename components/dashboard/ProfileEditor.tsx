@@ -56,6 +56,7 @@ function generateUUID() {
 
 export default function ProfileEditor({ profile, onUpdate, editProfile, setEditProfile, fetchProfile, isProUser, t: tProp, currentLang = "en" }: ProfileEditorProps) {
   const t = tProp || getTranslations(currentLang);
+  // Bearbeitungsmodus
   const [isEditMode, setIsEditMode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -384,195 +385,206 @@ export default function ProfileEditor({ profile, onUpdate, editProfile, setEditP
   const publicUrl = `http://linkulike.local:3000/${profile.username}`;
 
   return (
-    <div className="w-full max-w-md ml-0 mt-8 p-6 bg-white rounded-xl shadow flex flex-col items-center">
-      {/* Profil-Link */}
-      <div className="w-full flex items-center justify-center gap-2 mb-4">
-        <span className="text-gray-500 text-sm">{t.profileLink}:</span>
-        <span className="font-mono text-sm bg-gray-50 px-2 py-1 rounded border border-gray-200">{publicUrl}</span>
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={copyProfileUrl}
-          className="ml-1"
-          title={t.copy}
+    <div className="max-w-lg ml-0 bg-white rounded-2xl shadow-lg p-8 flex flex-col gap-8 relative">
+      {/* Bearbeitungsmodus-Badge */}
+      {isEditMode && (
+        <div className="absolute top-4 left-4 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-semibold shadow">Bearbeitungsmodus</div>
+      )}
+      {/* Avatar-Bereich */}
+      <div className="flex flex-col items-center gap-2 relative">
+        <div className="relative group">
+          <img
+            src={editData.avatarUrl || "/avatar-placeholder.png"}
+            alt="Avatar"
+            className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-md group-hover:brightness-90 transition"
+            onError={e => { e.currentTarget.src = "/avatar-placeholder.png"; }}
+          />
+        </div>
+        {/* Kamera-Icon jetzt UNTER dem Avatar */}
+        <button
+          type="button"
+          className="mt-2 bg-white rounded-full p-2 shadow hover:bg-gray-100 transition border border-gray-200"
+          onClick={() => setEditorOpen(true)}
+          title="Avatar ändern"
         >
-          {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
-        </Button>
+          <Camera className="w-5 h-5 text-gray-700" />
+        </button>
+        <span className="text-xs text-gray-400 mt-1">Avatar ändern</span>
       </div>
-      {/* Avatar mit Overlay-Buttons */}
-      <div className="relative group mb-4">
-        <Avatar className="w-28 h-28">
-          <AvatarImage src={editData.avatarUrl || undefined} alt="Avatar" />
-          <AvatarFallback>
-            <User className="w-12 h-12" />
-          </AvatarFallback>
-        </Avatar>
-        {/* Overlay-Buttons: sichtbar bei Hover oder immer auf Mobile */}
-        <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 sm:opacity-100">
-          <Button
-            variant="secondary"
-            size="icon"
-            onClick={handleAvatarEdit}
-            className="bg-white/90 hover:bg-white text-gray-800 shadow"
-            title="Neues Foto"
-          >
-            <Camera className="w-5 h-5" />
-          </Button>
-          {editData.avatarUrl && (
-            <>
-              <Button
-                variant="secondary"
-                size="icon"
-                onClick={handleAvatarEditExisting}
-                className="bg-white/90 hover:bg-white text-gray-800 shadow"
-                title="Bearbeiten"
-              >
-                <Edit className="w-5 h-5" />
-              </Button>
-              <Button
-                variant="secondary"
-                size="icon"
-                onClick={handleRemoveAvatar}
-                disabled={isLoading}
-                className="bg-white/90 hover:bg-white text-red-600 shadow"
-                title="Entfernen"
-              >
-                <X className="w-5 h-5" />
-              </Button>
-            </>
+      {/* Profilinfos */}
+      <div className={`flex flex-col gap-6 ${isEditMode ? 'border-2 border-blue-300 rounded-xl p-4 bg-blue-50/30' : ''}`}>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Display Name</label>
+          {isEditMode ? (
+            <input
+              name="displayName"
+              value={editData.displayName}
+              onChange={e => setEditData(d => ({ ...d, displayName: e.target.value }))}
+              className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-base"
+              maxLength={32}
+              required
+            />
+          ) : (
+            <div className="py-2 px-4 bg-gray-50 rounded text-gray-800 border border-gray-100">{editData.displayName}</div>
           )}
         </div>
-        <input
-          type="file"
-          accept="image/*"
-          ref={fileInputRef}
-          onChange={handleFileChange}
-          className="hidden"
-        />
-      </div>
-      {/* Display Name */}
-      <input
-        className="w-full text-xl font-semibold text-center mb-1 border-none focus:ring-2 focus:ring-primary/30 rounded bg-gray-50 py-2 px-3"
-        value={editData.displayName}
-        onChange={e => setEditData(prev => ({ ...prev, displayName: e.target.value }))}
-        placeholder={t.yourName}
-        maxLength={30}
-      />
-      {/* Username + Edit */}
-      <div className="flex items-center justify-center gap-2 text-gray-500 text-center mb-2">
-        <span>@{profile.username}</span>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setUsernameDialogOpen(true)}
-          className="p-1"
-          title={t.changeUsername}
-        >
-          <Edit className="w-4 h-4" />
-        </Button>
-      </div>
-      {/* Username-Dialog */}
-      <Dialog open={usernameDialogOpen} onOpenChange={setUsernameDialogOpen}>
-        <DialogContent className="sm:max-w-md bg-white shadow-xl rounded-xl border border-gray-200 p-6">
-          <DialogHeader>
-            <DialogTitle>{t.changeUsernameTitle}</DialogTitle>
-            <DialogDescription>
-              {t.changeUsernameDescription}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">{t.newUsername}</label>
-              <Input
-                value={usernameData.newUsername}
-                onChange={(e) => setUsernameData(prev => ({ ...prev, newUsername: e.target.value }))}
-                placeholder="neuer-username"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">{t.confirmUsername}</label>
-              <Input
-                value={usernameData.confirmation}
-                onChange={(e) => setUsernameData(prev => ({ ...prev, confirmation: e.target.value }))}
-                placeholder="neuer-username"
-              />
-            </div>
-            {usernameError && (
-              <div className="text-sm text-red-600 bg-red-50 p-3 rounded-lg">
-                {usernameError}
-              </div>
-            )}
-            {!canChangeUsername() && (
-              <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4" />
-                {t.usernameChangeBlocked.replace('{date}', getNextUsernameChangeDate()?.toLocaleDateString() || '')}
-              </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+          <div className="flex items-center gap-2">
+            <input
+              name="username"
+              value={profile.username}
+              disabled
+              className="w-full px-4 py-2 rounded-lg border border-gray-100 bg-gray-50 text-gray-400 text-base cursor-not-allowed"
+            />
+            {isEditMode && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setUsernameDialogOpen(true)}
+                className="ml-1"
+              >
+                Benutzernamen ändern
+              </Button>
             )}
           </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setUsernameDialogOpen(false)}
-            >
-              {t.cancel}
-            </Button>
-            <Button
-              onClick={handleUsernameChange}
-              disabled={isChangingUsername || !usernameData.newUsername || usernameData.newUsername !== usernameData.confirmation}
-            >
-              {isChangingUsername ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  {t.changingUsername}
-                </>
-              ) : (
-                t.changeUsernameButton
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      {/* Bio */}
-      <textarea
-        className="w-full text-center text-gray-700 bg-gray-50 rounded p-2 mb-2 border-none focus:ring-2 focus:ring-primary/30"
-        value={editData.bio}
-        onChange={e => setEditData(prev => ({ ...prev, bio: e.target.value }))}
-        placeholder={t.tellAboutYourself}
-        rows={3}
-        maxLength={160}
-      />
-      <div className="text-xs text-gray-400 mb-4">{editData.bio.length}/160 {t.characters}</div>
-      {/* Save/Cancel nur wenn geändert */}
-      {hasProfileChanges && (
-        <div className="flex gap-2 mt-2">
-          <Button
-            size="sm"
-            onClick={handleSaveProfile}
-            disabled={isLoading}
-            className="flex items-center gap-2"
-          >
-            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            {isLoading ? t.saving : t.save}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleCancelEdit}
-            disabled={isLoading}
-            className="flex items-center gap-2"
-          >
-            <X className="w-4 h-4" />
-            {t.cancel}
-          </Button>
+          {/* Username-Dialog */}
+          <Dialog open={usernameDialogOpen} onOpenChange={setUsernameDialogOpen}>
+            <DialogContent className="sm:max-w-md bg-white shadow-xl rounded-xl border border-gray-200 p-6">
+              <DialogHeader>
+                <DialogTitle>Benutzernamen ändern</DialogTitle>
+                <DialogDescription>
+                  Wähle einen neuen, eindeutigen Benutzernamen. (Nur Buchstaben, Zahlen, - und _)
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Neuer Benutzername</label>
+                  <Input
+                    value={usernameData.newUsername}
+                    onChange={(e) => setUsernameData(prev => ({ ...prev, newUsername: e.target.value }))}
+                    placeholder="neuer-benutzername"
+                    maxLength={32}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Bestätigen</label>
+                  <Input
+                    value={usernameData.confirmation}
+                    onChange={(e) => setUsernameData(prev => ({ ...prev, confirmation: e.target.value }))}
+                    placeholder="neuer-benutzername"
+                    maxLength={32}
+                  />
+                </div>
+                {usernameError && (
+                  <div className="text-sm text-red-600 bg-red-50 p-3 rounded-lg">
+                    {usernameError}
+                  </div>
+                )}
+                {!canChangeUsername() && (
+                  <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4" />
+                    Du kannst deinen Benutzernamen erst wieder am {getNextUsernameChangeDate()?.toLocaleDateString() || ''} ändern.
+                  </div>
+                )}
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setUsernameDialogOpen(false)}
+                >
+                  Abbrechen
+                </Button>
+                <Button
+                  onClick={handleUsernameChange}
+                  disabled={isChangingUsername || !usernameData.newUsername || usernameData.newUsername !== usernameData.confirmation || !canChangeUsername()}
+                >
+                  {isChangingUsername ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Ändere...
+                    </>
+                  ) : (
+                    "Speichern"
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
+          {isEditMode ? (
+            <textarea
+              name="bio"
+              value={editData.bio}
+              onChange={e => setEditData(d => ({ ...d, bio: e.target.value }))}
+              className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-base min-h-[60px]"
+              maxLength={160}
+            />
+          ) : (
+            <div className="py-2 px-4 bg-gray-50 rounded text-gray-800 border border-gray-100 min-h-[60px]">{editData.bio}</div>
+          )}
+          <div className="text-xs text-gray-400 text-right mt-1">{editData.bio.length}/160</div>
+        </div>
+      </div>
+      {/* Speichern/Abbrechen-Button nur im Edit-Mode */}
+      {isEditMode ? (
+        <div className="flex justify-end gap-2 mt-4">
+          <button
+            type="button"
+            onClick={handleSaveProfile}
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold shadow hover:bg-blue-700 transition disabled:opacity-60"
+            disabled={isLoading || !hasProfileChanges}
+          >
+            {isLoading ? "Speichern..." : "Speichern"}
+          </button>
+          <button
+            type="button"
+            onClick={() => { setIsEditMode(false); setEditData({ displayName: profile.displayName || "", bio: profile.bio || "", avatarUrl: profile.avatarUrl || "" }); }}
+            className="bg-gray-100 text-gray-700 px-6 py-2 rounded-lg font-semibold shadow hover:bg-gray-200 transition"
+            disabled={isLoading}
+          >
+            Abbrechen
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setIsEditMode(true)}
+          className="w-full mt-6 bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold shadow hover:bg-blue-700 transition"
+        >
+          Profil bearbeiten
+        </button>
       )}
       {/* Avatar Editor Modal */}
-      {editorOpen && selectedImage && (
+      {editorOpen && (
         <AvatarEditor
-          image={selectedImage}
+          image={selectedImage || editData.avatarUrl || null}
           onCropComplete={handleCropComplete}
           onCancel={handleAvatarEditorCancel}
           isUploading={isUploading || isLoading}
+          onRemove={async () => {
+            setIsLoading(true);
+            setEditData(prev => ({ ...prev, avatarUrl: "" }));
+            if (setEditProfile) setEditProfile({ displayName: editData.displayName, bio: editData.bio, avatarUrl: "" });
+            const response = await fetch("/api/user/profile", {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ ...editData, avatarUrl: "" }),
+            });
+            if (response.ok) {
+              const updatedProfile = await response.json();
+              onUpdate(updatedProfile);
+              if (typeof fetchProfile === 'function') fetchProfile();
+              toast({ title: t.avatarRemoved, description: "Avatar wurde erfolgreich entfernt" });
+              setEditorOpen(false);
+              setIsLoading(false);
+            } else {
+              toast({ title: t.error, description: t.avatarRemoveFailed, variant: "destructive" });
+              setIsLoading(false);
+            }
+          }}
         />
       )}
     </div>
