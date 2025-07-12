@@ -18,6 +18,8 @@ model User {
   displayName         String?
   bio                 String?
   avatarUrl           String?
+  originalAvatarUrl   String?
+  avatarBorderColor   String? // Rahmenfarbe für Avatar
   theme               String?  @default("default")
   backgroundColor     String?  @default("#000000")
   backgroundGradient  String?  @default("linear-gradient(135deg, #667eea 0%, #764ba2 100%)")
@@ -83,6 +85,14 @@ model LinkClick {
   userAgent String?
   referer   String?
   clickedAt DateTime @default(now())
+
+  // Analytics fields
+  country   String?
+  city      String?
+  device    String?
+  os        String?
+  browser   String?
+  sessionId String?
 
   link Link @relation(fields: [linkId], references: [id], onDelete: Cascade)
 

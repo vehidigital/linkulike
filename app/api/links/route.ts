@@ -28,7 +28,13 @@ export async function GET() {
         links: {
           orderBy: { position: "asc" },
           include: {
-            clicks: true,
+            clicks: {
+              orderBy: { clickedAt: "desc" },
+              take: 10, // Get last 10 clicks for recent activity
+            },
+            _count: {
+              select: { clicks: true }, // Get total click count
+            },
           },
         },
       },
@@ -38,7 +44,19 @@ export async function GET() {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    return NextResponse.json(user.links)
+    // Add analytics summary to each link
+    const linksWithAnalytics = user.links.map(link => ({
+      ...link,
+      analytics: {
+        totalClicks: link._count.clicks,
+        recentClicks: link.clicks.length,
+        lastClick: link.clicks[0]?.clickedAt || null,
+      },
+      clicks: undefined, // Remove detailed clicks from response
+      _count: undefined, // Remove count from response
+    }))
+
+    return NextResponse.json(linksWithAnalytics)
   } catch (error) {
     console.error("Error fetching links:", error)
     return NextResponse.json(
@@ -75,19 +93,39 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const link = await prisma.link.create({
-      data: {
-        title,
-        url,
-        icon: icon || "globe",
-        position: position || 0,
-        customColor: customColor !== undefined ? customColor : "#f3f4f6",
-        useCustomColor: useCustomColor !== undefined ? useCustomColor : true,
-        userId: user.id,
-      },
+    // Create link and audit log in a transaction
+    const result = await prisma.$transaction(async (tx) => {
+      const link = await tx.link.create({
+        data: {
+          title,
+          url,
+          icon: icon || "globe",
+          position: position || 0,
+          customColor: customColor !== undefined ? customColor : "#f3f4f6",
+          useCustomColor: useCustomColor !== undefined ? useCustomColor : true,
+          userId: user.id,
+        },
+      })
+
+      // Create audit log for link creation
+      await tx.auditLog.create({
+        data: {
+          userId: user.id,
+          action: "link_created",
+          target: "link",
+          details: JSON.stringify({
+            title,
+            url,
+            icon: icon || "globe",
+            position: position || 0,
+          }),
+        },
+      })
+
+      return link
     })
 
-    return NextResponse.json(link)
+    return NextResponse.json(result)
   } catch (error) {
     console.error("Error creating link:", error)
     return NextResponse.json(
@@ -114,7 +152,12 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    const links = await request.json()
+    // Fix: Unterstütze sowohl Array als auch Objekt mit links-Array
+    const body = await request.json();
+    const links = Array.isArray(body) ? body : body.links;
+    if (!Array.isArray(links)) {
+      return NextResponse.json({ error: "Invalid links payload" }, { status: 400 });
+    }
 
     // Update all links in a transaction
     const updatedLinks = await prisma.$transaction(

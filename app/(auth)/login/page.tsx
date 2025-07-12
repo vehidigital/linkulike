@@ -56,9 +56,19 @@ export default function LoginPage() {
           title: t.loginSuccessTitle || (lang === "de" ? "Erfolg" : "Success"),
           description: t.loginSuccess || (lang === "de" ? "Erfolgreich angemeldet" : "Logged in successfully"),
         })
-        
-        // Direkt zum Dashboard weiterleiten
-        router.push("/dashboard")
+        // User-ID aus Session holen und auf /[userId]/dashboard weiterleiten
+        try {
+          const sessionRes = await fetch("/api/auth/session")
+          const sessionJson = await sessionRes.json()
+          const userId = sessionJson?.user?.id
+          if (userId) {
+            router.push(`/${userId}/dashboard`)
+          } else {
+            router.push("/dashboard") // Fallback
+          }
+        } catch (e) {
+          router.push("/dashboard") // Fallback
+        }
       }
     } catch (error) {
       toast({

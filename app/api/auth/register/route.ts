@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import bcrypt from "bcryptjs"
+import { randomBytes } from "crypto"
 
 export async function POST(request: NextRequest) {
   try {
@@ -57,7 +58,6 @@ export async function POST(request: NextRequest) {
         password: hashedPassword,
         username: username.toLowerCase(),
         displayName: username,
-
       },
       select: {
         id: true,
@@ -68,6 +68,46 @@ export async function POST(request: NextRequest) {
       },
     })
     console.log('Register-API: User created', user)
+
+    // E-Mail-Verifizierung anlegen
+    const emailToken = randomBytes(32).toString('hex')
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24) // 24h gültig
+    await prisma.emailVerification.create({
+      data: {
+        userId: user.id,
+        token: emailToken,
+        expiresAt,
+        status: 'pending',
+      }
+    })
+
+    // Consent für Datenschutz/AGB anlegen
+    await prisma.consent.create({
+      data: {
+        userId: user.id,
+        type: 'privacy',
+        acceptedAt: new Date(),
+        version: '1.0',
+      }
+    })
+    await prisma.consent.create({
+      data: {
+        userId: user.id,
+        type: 'terms',
+        acceptedAt: new Date(),
+        version: '1.0',
+      }
+    })
+
+    // OptIn für Systemmails (Beispiel)
+    await prisma.optIn.create({
+      data: {
+        userId: user.id,
+        type: 'system',
+        status: 'subscribed',
+        timestamp: new Date(),
+      }
+    })
 
     return NextResponse.json(
       { 

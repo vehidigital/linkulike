@@ -259,6 +259,7 @@ export default function ProfilePage({ user }: ProfilePageProps) {
 
         {/* Footer */}
         <div className="text-center text-sm opacity-60" style={{ color: footerColor }}>
+          {/* Footer-Text hat IMMER Kontrastfarbe zum Hintergrund für beste Lesbarkeit */}
           <p>Powered by Linkulike</p>
         </div>
       </div>

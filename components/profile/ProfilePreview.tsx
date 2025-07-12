@@ -7,6 +7,7 @@ import { getLinkButtonColors, getLinkIcon } from "@/lib/link-button-utils"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { getTranslations } from '@/lib/i18n'
+import { Heart, Share2 } from 'lucide-react'
 
 interface LinkItem {
   icon: string
@@ -43,6 +44,8 @@ interface ProfilePreviewProps {
     bio: string
     links: { icon: string; label: string }[]
   }
+  themeId?: string // NEU
+  avatarBorderColor?: string // NEU
 }
 
 const demoLinks: Record<"de" | "en", LinkItem[]> = {
@@ -91,25 +94,46 @@ function getButtonColor(link: UserLink) {
   return STANDARD_COLOR
 }
 
-export const ProfilePreview: React.FC<ProfilePreviewProps> = ({ displayName, username, bio, avatarUrl, links, theme, buttonStyle, buttonColor, buttonGradient, currentLang, textColor, placeholders }) => {
+export const ProfilePreview: React.FC<ProfilePreviewProps> = ({ displayName, username, bio, avatarUrl, links, theme, buttonStyle, buttonColor, buttonGradient, currentLang, textColor, placeholders, themeId, avatarBorderColor }) => {
   const t = getTranslations(currentLang);
   const name = displayName || placeholders?.displayName || (currentLang === "de" ? "Max Mustermann" : "Max Example")
   const uname = username || placeholders?.username || (currentLang === "de" ? "maxmustermann" : "maxexample")
   const bioText = bio || placeholders?.bio || t.sampleBio
-  const showLinks = links && links.length > 0 ? links.slice(0, 5) : demoLinks[currentLang].map(l => ({ ...l, label: t.sampleLink }))
-  const bg = buttonStyle === 'gradient'
-    ? (theme && theme.startsWith('linear-gradient') ? theme : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)')
-    : (theme && !theme.startsWith('linear-gradient') ? theme : '#6366f1')
+  const demo = (demoLinks && demoLinks[currentLang]) ? demoLinks[currentLang] : [];
+  // Filter only active user links
+  const filteredLinks = links?.filter(l => !('isActive' in l) || (l as any).isActive !== false) || [];
+  const showLinks = filteredLinks.length > 0 ? filteredLinks.slice(0, 5) : demo.map(l => ({ ...l, label: t.sampleLink }));
+  // Ersetze die bg-Berechnung:
+  let bg;
+  if (buttonStyle === 'gradient') {
+    // Gradient-Mode
+    if (themeId === 'light') {
+      bg = 'linear-gradient(135deg, #fff 0%, #e5e7eb 100%)';
+    } else {
+      bg = buttonGradient || theme || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+    }
+  } else {
+    // Uni-Farbe
+    if (themeId === 'light') {
+      bg = '#fff';
+    } else {
+      bg = buttonColor || theme || '#6366f1';
+    }
+  }
   // Für Kontrastfarbe: immer echte Farbe extrahieren
   const bgColorForContrast = extractFirstColorFromGradient(bg);
-  const effectiveTextColor = textColor || getContrastColor(bgColorForContrast)
-  const footerColor = getContrastColor(bgColorForContrast);
+  // Nach bgColorForContrast:
+  const isLightTheme = (typeof theme === 'string' && theme.toLowerCase().includes('light')) || bgColorForContrast === '#f3f4f6' || bgColorForContrast === '#fff' || bgColorForContrast === '#ffffff' || (typeof bgColorForContrast === 'string' && bgColorForContrast.toLowerCase().includes('e5e7eb'));
+  // NEU: Dark Theme immer weiße Schrift
+  const isDarkTheme = (themeId === 'dark' || (!isLightTheme && (bgColorForContrast === '#222' || bgColorForContrast === '#111' || bgColorForContrast === '#000' || (typeof bgColorForContrast === 'string' && bgColorForContrast.toLowerCase().includes('6366f1')))));
+  const effectiveTextColor = isDarkTheme ? '#fff' : (isLightTheme ? '#222' : (textColor || getContrastColor(bgColorForContrast)));
+  const footerColor = isDarkTheme ? '#fff' : getContrastColor(bgColorForContrast);
 
   // Immer ein neutraler Rand
-  const isLightTheme = bgColorForContrast === '#f3f4f6' || bgColorForContrast === '#fff' || (typeof bgColorForContrast === 'string' && bgColorForContrast.toLowerCase().includes('e5e7eb'));
-
   // Logging für Debugging
   console.log('ProfilePreview avatarUrl:', avatarUrl);
+  // Debug: Log avatarBorderColor for live preview troubleshooting
+  console.log('ProfilePreview avatarBorderColor:', avatarBorderColor);
 
   return (
     <div
@@ -119,15 +143,27 @@ export const ProfilePreview: React.FC<ProfilePreviewProps> = ({ displayName, use
       <div className="w-full max-w-md mx-auto space-y-8">
         {/* Profile Header */}
         <div className="text-center space-y-4">
-          <Avatar className="w-24 h-24 mx-auto border-4 border-white/20 shadow-lg bg-gray-200">
+          <Avatar className="w-24 h-24 mx-auto border-4 shadow-lg bg-gray-200"
+            style={{ borderColor: avatarBorderColor || '#fff' }}
+          >
             <AvatarImage src={avatarUrl || undefined} alt={name} />
             <AvatarFallback>
               <span>{name.charAt(0).toUpperCase()}</span>
             </AvatarFallback>
           </Avatar>
           <div>
-            <h1 className="text-2xl font-bold mb-2" style={{ color: effectiveTextColor }}>{name}</h1>
-            <p className="text-sm opacity-80 mb-1" style={{ color: effectiveTextColor }}>@{uname}</p>
+            <h1
+              className="text-xl sm:text-2xl font-bold mb-2 break-words text-center leading-tight max-w-full max-h-[3.5em] overflow-hidden"
+              style={{ color: effectiveTextColor }}
+            >
+              {name}
+            </h1>
+            <p
+              className="text-sm opacity-80 mb-1 break-all text-center max-w-full"
+              style={{ color: effectiveTextColor }}
+            >
+              @{uname}
+            </p>
             {bioText && (
               <p className="text-sm opacity-90 leading-relaxed max-w-sm mx-auto text-center line-clamp-3 break-words" style={{ color: effectiveTextColor, whiteSpace: 'pre-line' }}>{bioText}</p>
             )}
@@ -140,11 +176,16 @@ export const ProfilePreview: React.FC<ProfilePreviewProps> = ({ displayName, use
             let icon = '';
             let textColor;
             if (isUserLink(l)) {
-              buttonColors = getLinkButtonColors(l, buttonColor || STANDARD_COLOR);
+              buttonColors = getLinkButtonColors(l);
               icon = getLinkIcon(l, ICON_OPTIONS);
-              textColor = getContrastColor(buttonColors.backgroundColor);
-              if (l.textColorOverride === 'light') textColor = '#fff';
-              else if (l.textColorOverride === 'dark') textColor = '#222';
+              // Button-Textfarbe: Nur nach Link-Override, sonst Kontrast zur Buttonfarbe
+              if (l.textColorOverride === 'light') {
+                textColor = '#fff';
+              } else if (l.textColorOverride === 'dark') {
+                textColor = '#222';
+              } else {
+                textColor = getContrastColor(buttonColors.backgroundColor);
+              }
             } else {
               // DemoLink fallback
               buttonColors = { backgroundColor: STANDARD_COLOR };
@@ -157,13 +198,24 @@ export const ProfilePreview: React.FC<ProfilePreviewProps> = ({ displayName, use
             return (
               <Button
                 key={i}
-                className="w-full py-4 px-6 rounded-xl font-medium text-left transition-all duration-200 hover:scale-105 hover:shadow-lg flex items-center space-x-3"
-                style={{ backgroundColor: buttonColors.backgroundColor, color: textColor, border: `1px solid ${buttonColors.backgroundColor}` }}
+                className="w-full py-4 px-6 rounded-xl font-medium transition-all duration-300 hover:scale-[1.02] hover:shadow-xl active:scale-[0.98] flex items-center justify-between gap-3 group"
+                style={{ 
+                  backgroundColor: buttonColors.backgroundColor, 
+                  color: textColor, 
+                  border: `1px solid ${buttonColors.backgroundColor}`,
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                }}
                 type="button"
               >
-                <span className="text-xl">{icon || '🌐'}</span>
-                <span className="flex-1">{title}</span>
-                <svg className="w-4 h-4 opacity-60" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M18 13V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h7m5-5 3 3m0 0-3 3m3-3H9" /></svg>
+                {/* Linker Bereich: Icon + Text */}
+                <span className="flex items-center gap-3 min-w-0">
+                  <span className="text-xl flex-shrink-0 align-middle">{icon || '🌐'}</span>
+                  <span className="truncate block text-base font-semibold align-middle" style={{lineHeight: '1.2'}}>{title}</span>
+                </span>
+                {/* Rechter Bereich: Icon (z.B. External Link) */}
+                <span className="flex items-center flex-shrink-0 opacity-70 group-hover:opacity-100 transition-opacity">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M18 13V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h7m5-5 3 3m0 0-3 3m3-3H9" /></svg>
+                </span>
               </Button>
             )
           }) : (
@@ -173,9 +225,21 @@ export const ProfilePreview: React.FC<ProfilePreviewProps> = ({ displayName, use
           )}
         </div>
         {/* Action Buttons */}
-        <div className="flex justify-center space-x-4 pt-4">
-                  <button type="button" className="rounded px-4 py-2 flex items-center" style={{ color: footerColor }}><svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" /></svg>{t.like}</button>
-        <button type="button" className="rounded px-4 py-2 flex items-center" style={{ color: footerColor }}><svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v16h16V4H4zm4 4h8v8H8V8z" /></svg>{t.share}</button>
+        <div className="flex justify-center gap-6 pt-4">
+          <button
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition text-base font-medium ${isDarkTheme ? 'hover:bg-white/10' : 'hover:bg-black/10'}`}
+            style={{ color: effectiveTextColor }}
+          >
+            <Heart className="w-5 h-5" />
+            <span>Gefällt mir</span>
+          </button>
+          <button
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition text-base font-medium ${isDarkTheme ? 'hover:bg-white/10' : 'hover:bg-black/10'}`}
+            style={{ color: effectiveTextColor }}
+          >
+            <Share2 className="w-5 h-5" />
+            <span>Teilen</span>
+          </button>
         </div>
         {/* Footer */}
         <div className="text-center text-sm opacity-60" style={{ color: footerColor }}>

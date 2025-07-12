@@ -31,10 +31,10 @@ export default function AuthNav() {
 
           {/* Navigation Links */}
           <div className="hidden md:flex items-center space-x-6">
-            <Link href="/dashboard" className="text-gray-600 hover:text-gray-900 transition-colors">
+            <Link href={`/${session?.user?.id}/dashboard`} className="text-gray-600 hover:text-gray-900 transition-colors">
               Dashboard
             </Link>
-            <Link href="/dashboard/settings" className="text-gray-600 hover:text-gray-900 transition-colors">
+            <Link href={`/${session?.user?.id}/settings`} className="text-gray-600 hover:text-gray-900 transition-colors">
               Einstellungen
             </Link>
           </div>
@@ -66,19 +66,19 @@ export default function AuthNav() {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link href="/dashboard" className="flex items-center">
+                    <Link href={`/${session?.user?.id}/dashboard`} className="flex items-center">
                       <LayoutDashboard className="mr-2 h-4 w-4" />
                       Dashboard
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href="/dashboard/profile" className="flex items-center">
+                    <Link href={`/${session?.user?.id}/profile`} className="flex items-center">
                       <User className="mr-2 h-4 w-4" />
                       Profil
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href="/dashboard/settings" className="flex items-center">
+                    <Link href={`/${session?.user?.id}/settings`} className="flex items-center">
                       <Settings className="mr-2 h-4 w-4" />
                       Einstellungen
                     </Link>

@@ -1,4 +1,5 @@
 import { createUploadthing, type FileRouter } from 'uploadthing/next';
+import { nanoid } from 'nanoid'; // Wird nicht mehr benötigt, aber bleibt für spätere Erweiterungen
 
 const f = createUploadthing();
 
@@ -14,6 +15,7 @@ export const uploadRouter = {
       console.log('=== UPLOADTHING MIDDLEWARE END ===');
       return {};
     })
+    // .onUploadBegin entfernt, da in Uploadthing v5+ nicht mehr unterstützt
     .onUploadComplete(async ({ file, metadata }) => {
       console.log('=== UPLOADTHING UPLOAD COMPLETE ===');
       console.log('Uploadthing Backend: Upload completed');

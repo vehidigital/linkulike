@@ -125,7 +125,13 @@ export default function RegisterPage() {
             description: lang === "de" ? "Konto erfolgreich erstellt! Du wirst zum Dashboard weitergeleitet." : "Account created successfully! You will be redirected to dashboard.",
           })
           setTimeout(() => {
-            window.location.href = "/dashboard"
+            // User-ID aus Session holen und auf /[userId]/dashboard weiterleiten
+            const userId = sessionJson.user.id
+            if (userId) {
+              window.location.href = `/${userId}/dashboard`
+            } else {
+              window.location.href = "/dashboard" // Fallback
+            }
           }, 1000)
         } else {
           setDebugInfo({ signInResult, sessionJson, cookies })

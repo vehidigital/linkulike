@@ -20,7 +20,7 @@ export function middleware(req) {
   console.log('[MIDDLEWARE-DEBUG] Final lang:', lang)
 
   // Weiterleitung: Profilseiten auf Subdomains immer auf Hauptdomain
-  const isProfilePage = /^\/[a-zA-Z0-9_\-]+$/.test(pathname) && !pathname.startsWith('/api') && !pathname.startsWith('/dashboard') && !pathname.startsWith('/login') && !pathname.startsWith('/register');
+  const isProfilePage = /^\/[a-zA-Z0-9_\-]+$/.test(pathname) && !pathname.startsWith('/api') && !pathname.startsWith('/dashboard') && !pathname.startsWith('/login') && !pathname.startsWith('/register') && !pathname.startsWith('/profile');
   if (
     (hostname !== 'linkulike.local' && hostname !== '0.0.0.0' && hostname !== 'localhost')
     && isProfilePage

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { User, Camera, Save, Loader2, Edit, X, AlertTriangle, Check, Copy } from "lucide-react";
+import { User, Camera, Save, Loader2, Edit, X, AlertTriangle, Check, Copy, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "../ui/textarea";
@@ -13,6 +13,7 @@ import { toast } from "@/hooks/use-toast";
 import { useUploadThing } from '@/lib/uploadthing';
 import AvatarEditor from './AvatarEditor';
 import { getTranslations } from "@/lib/i18n";
+import AvatarUploadFlow from "@/components/profile/AvatarUploadFlow";
 
 interface UserProfile {
   username: string;
@@ -34,12 +35,13 @@ interface UserProfile {
 interface ProfileEditorProps {
   profile: any;
   onUpdate: any;
-  editProfile: any;
-  setEditProfile: any;
   fetchProfile: any;
   isProUser: boolean;
   t?: any;
   currentLang?: "de" | "en";
+  isEditMode: boolean;
+  setIsEditMode: (v: boolean) => void;
+  onEditDataChange?: (data: any) => void;
 }
 
 // UUID-Helper für alle Browser
@@ -54,10 +56,11 @@ function generateUUID() {
   });
 }
 
-export default function ProfileEditor({ profile, onUpdate, editProfile, setEditProfile, fetchProfile, isProUser, t: tProp, currentLang = "en" }: ProfileEditorProps) {
+export default function ProfileEditor({ profile, onUpdate, fetchProfile, isProUser, t: tProp, currentLang = "en", isEditMode, setIsEditMode, onEditDataChange }: ProfileEditorProps) {
+  console.log('profile ref', profile);
   const t = tProp || getTranslations(currentLang);
+  
   // Bearbeitungsmodus
-  const [isEditMode, setIsEditMode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -66,9 +69,11 @@ export default function ProfileEditor({ profile, onUpdate, editProfile, setEditP
   const [copied, setCopied] = useState(false);
   const [lang, setLang] = useState<"de" | "en">("en");
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Get translations
-  // const t = getTranslations(lang); // This line is now redundant as t is passed as a prop
+  // State für AvatarUploadFlow-Modal
+  const [avatarModalOpen, setAvatarModalOpen] = useState(false);
+  // State for independent avatar border color selection
+  const [pendingAvatarBorderColor, setPendingAvatarBorderColor] = useState<string | null>(null);
+  const [isSavingBorderColor, setIsSavingBorderColor] = useState(false);
 
   // Detect language from hostname
   useEffect(() => {
@@ -82,12 +87,35 @@ export default function ProfileEditor({ profile, onUpdate, editProfile, setEditP
     }
   }, []);
 
-  // Edit form data
-  const [editData, setEditData] = useState({
-    displayName: profile.displayName || "",
-    bio: profile.bio || "",
-    avatarUrl: profile.avatarUrl || "",
-  });
+  const allowedFields = [
+    "username",
+    "displayName",
+    "bio",
+    "avatarUrl",
+    "originalAvatarUrl",
+    "avatarBorderColor",
+    "theme",
+    "backgroundColor",
+    "backgroundGradient",
+    "buttonStyle",
+    "buttonColor",
+    "buttonGradient",
+    "textColor",
+    "fontFamily"
+  ];
+
+  // PENDING CHANGES: Diese werden nur in der Live Preview angezeigt
+  const [pendingChanges, setPendingChanges] = useState<Record<string, any>>({});
+  
+  // ORIGINAL DATA: Das sind die echten, gespeicherten Daten
+  const [originalData, setOriginalData] = useState<Record<string, any>>({});
+
+  // Initialize original data when profile changes
+  useEffect(() => {
+    const initialData = Object.fromEntries(allowedFields.map(key => [key, profile[key] ?? ""]));
+    setOriginalData(initialData);
+    setPendingChanges({}); // Reset pending changes when profile changes
+  }, [profile.id]);
 
   // Username change dialog state
   const [usernameData, setUsernameData] = useState({
@@ -101,65 +129,26 @@ export default function ProfileEditor({ profile, onUpdate, editProfile, setEditP
   const { startUpload, isUploading } = useUploadThing("avatar", {
     onClientUploadComplete: async (res) => {
       if (res && res.length > 0) {
-        const avatarUrl = res[0].url;
-        // Aktuelle Werte holen
-        const displayName = editData.displayName;
-        const bio = editData.bio;
-        setEditData(prev => ({ ...prev, avatarUrl }));
-        if (setEditProfile) setEditProfile({ 
-          displayName, 
-          bio, 
-          avatarUrl 
-        });
-        // Save to profile mit aktuellen Werten
-        try {
-          const response = await fetch("/api/user/profile", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ displayName, bio, avatarUrl }),
-          });
-          if (response.ok) {
-            const updatedProfile = await response.json();
-            onUpdate(updatedProfile);
-            if (typeof fetchProfile === 'function') fetchProfile(); // Profil neu laden
-            toast({ title: t.success, description: t.avatarSaved });
-          } else {
-            toast({ title: t.error, description: t.avatarSaveFailed, variant: "destructive" });
-          }
-        } catch (e) {
-          toast({ title: t.error, description: t.avatarSaveFailed, variant: "destructive" });
+        const originalAvatarUrl = res[0].url;
+        
+        // Add to pending changes (not saved yet)
+        setPendingChanges(prev => ({ ...prev, originalAvatarUrl }));
+        if (onEditDataChange) {
+          const previewData = { ...originalData, ...pendingChanges, originalAvatarUrl };
+          onEditDataChange(previewData);
         }
-      } else {
-        toast({ title: t.error, description: t.avatarUploadFailed, variant: "destructive" });
+        
+        toast({
+          title: "Avatar hochgeladen",
+          description: "Das Bild wurde zur Vorschau hinzugefügt. Speichere deine Änderungen, um es zu übernehmen.",
+        });
       }
-      setEditorOpen(false);
-      setIsLoading(false);
     },
     onUploadError: (error: Error) => {
       toast({ title: t.error, description: `${t.avatarUploadFailed}: ${error.message}`, variant: "destructive" });
       setIsLoading(false);
     },
   });
-
-  // Update edit data when profile changes
-  useEffect(() => {
-    setEditData({
-      displayName: profile.displayName || "",
-      bio: profile.bio || "",
-      avatarUrl: profile.avatarUrl || "",
-    });
-  }, [profile]);
-
-  // Update editProfile when editData changes
-  useEffect(() => {
-    if (setEditProfile) {
-      setEditProfile({
-        displayName: editData.displayName,
-        bio: editData.bio,
-        avatarUrl: editData.avatarUrl,
-      });
-    }
-  }, [editData.displayName, editData.bio, editData.avatarUrl, setEditProfile]);
 
   // Store original image when component loads with an avatar
   useEffect(() => {
@@ -168,29 +157,36 @@ export default function ProfileEditor({ profile, onUpdate, editProfile, setEditP
     }
   }, [profile.avatarUrl, originalImage]);
 
-  // Track, ob sich Profilinfos geändert haben
-  const [hasProfileChanges, setHasProfileChanges] = useState(false);
-  useEffect(() => {
-    setHasProfileChanges(
-      editData.displayName !== profile.displayName ||
-      editData.bio !== profile.bio
-    );
-  }, [editData.displayName, editData.bio, profile.displayName, profile.bio]);
+  // Check if there are any pending changes
+  const hasPendingChanges = Object.keys(pendingChanges).length > 0;
+
+  // Get current display data (original + pending changes)
+  const getCurrentData = (field: string) => {
+    return pendingChanges[field] !== undefined ? pendingChanges[field] : originalData[field];
+  };
 
   const handleSaveProfile = async () => {
+    if (!hasPendingChanges) {
+      toast({ title: "Keine Änderungen", description: "Es gibt keine Änderungen zum Speichern." });
+      return;
+    }
+
     setIsLoading(true);
     try {
+      // Only send pending changes to the API
       const response = await fetch("/api/user/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editData),
+        body: JSON.stringify(pendingChanges),
       });
       
       if (response.ok) {
         const updatedProfile = await response.json();
         onUpdate(updatedProfile);
+        setOriginalData(prev => ({ ...prev, ...pendingChanges }));
+        setPendingChanges({}); // Clear pending changes
         setIsEditMode(false);
-        toast({ title: t.profileSaved, description: 'Deine Änderungen wurden übernommen.' });
+        toast({ title: t.profileSaved, description: 'Deine Änderungen wurden gespeichert.' });
       } else {
         const errorData = await response.json();
         toast({ title: t.error, description: errorData.error || t.profileSaveFailed, variant: 'destructive' });
@@ -201,25 +197,50 @@ export default function ProfileEditor({ profile, onUpdate, editProfile, setEditP
   };
 
   const handleCancelEdit = () => {
-    setEditData({
-      displayName: profile.displayName || "",
-      bio: profile.bio || "",
-      avatarUrl: profile.avatarUrl || "",
-    });
     setIsEditMode(false);
+    setPendingChanges({}); // Clear all pending changes
+    // Reset preview to original data
+    if (onEditDataChange) {
+      onEditDataChange(originalData);
+    }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleResetChanges = () => {
+    setPendingChanges({}); // Clear all pending changes
+    // Reset preview to original data
+    if (onEditDataChange) {
+      onEditDataChange(originalData);
+    }
+    toast({ title: "Änderungen zurückgesetzt", description: "Alle Änderungen wurden verworfen." });
+  };
+
+  // handleFileChange: Lade das Originalbild direkt zu Uploadthing hoch
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const imageData = ev.target?.result as string;
-      setSelectedImage(imageData);
-      setOriginalImage(imageData);
-      setEditorOpen(true);
-    };
-    reader.readAsDataURL(file);
+    setIsLoading(true);
+    try {
+      // 1. Originalbild zu Uploadthing hochladen
+      const uploadRes = await startUpload([file]);
+      if (uploadRes && uploadRes.length > 0) {
+        const originalAvatarUrl = uploadRes[0].url;
+        // 2. Add to pending changes (not saved yet)
+        setPendingChanges(prev => ({ ...prev, originalAvatarUrl }));
+        if (onEditDataChange) {
+          const previewData = { ...originalData, ...pendingChanges, originalAvatarUrl };
+          onEditDataChange(previewData);
+        }
+        // 3. Öffne den Cropper mit der Uploadthing-URL als Bildquelle
+        setSelectedImage(originalAvatarUrl);
+        setEditorOpen(true);
+      } else {
+        toast({ title: "Fehler", description: "Upload fehlgeschlagen.", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Fehler", description: "Upload fehlgeschlagen.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleAvatarEdit = () => {
@@ -227,7 +248,7 @@ export default function ProfileEditor({ profile, onUpdate, editProfile, setEditP
   };
 
   const handleAvatarEditExisting = async () => {
-    if (!editData.avatarUrl) return;
+    if (!getCurrentData('avatarUrl')) return;
     
     try {
       if (originalImage) {
@@ -236,7 +257,7 @@ export default function ProfileEditor({ profile, onUpdate, editProfile, setEditP
         return;
       }
       
-      const response = await fetch(editData.avatarUrl);
+      const response = await fetch(getCurrentData('avatarUrl'));
       if (!response.ok) {
         throw new Error(`Failed to fetch image: ${response.status}`);
       }
@@ -263,57 +284,67 @@ export default function ProfileEditor({ profile, onUpdate, editProfile, setEditP
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const handleCropComplete = async (croppedDataUrl: string) => {
+  // handleCropComplete: Lade das bearbeitete Bild als Datei zu Uploadthing hoch
+  const handleCropComplete = async (croppedImageUrl: string) => {
     setIsLoading(true);
     try {
-      const blob = await (await fetch(croppedDataUrl)).blob();
-      const ext = 'jpg';
-      const uniqueName = `avatar_${generateUUID()}.${ext}`;
-      const file = new File([blob], uniqueName, { type: 'image/jpeg' });
-      console.log('Starte Upload:', file);
-      await startUpload([file]);
-      console.log('Upload abgeschlossen');
-      // File-Input nach Upload zurücksetzen
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    } catch (e) {
-      console.error('Avatar-Upload-Fehler:', e);
-      toast({ title: "Fehler", description: `Avatar konnte nicht gespeichert werden: ${e instanceof Error ? e.message : 'Unbekannter Fehler'}`, variant: "destructive" });
-      setIsLoading(false);
-    }
-  };
-
-  const handleRemoveAvatar = async () => {
-    setIsLoading(true);
-    try {
-      setEditData(prev => ({ ...prev, avatarUrl: "" }));
-      if (setEditProfile) setEditProfile({ displayName: editData.displayName, bio: editData.bio, avatarUrl: "" });
-      const response = await fetch("/api/user/profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...editData, avatarUrl: "" }),
-      });
-      if (response.ok) {
-        const updatedProfile = await response.json();
-        onUpdate(updatedProfile);
-        if (typeof fetchProfile === 'function') fetchProfile();
-        toast({ title: t.avatarRemoved, description: "Avatar wurde erfolgreich entfernt" });
-        // File-Input nach Entfernen zurücksetzen
-        if (fileInputRef.current) fileInputRef.current.value = "";
+      // DataURL in File umwandeln
+      const blob = await (await fetch(croppedImageUrl)).blob();
+      const file = new File([blob], `avatar_cropped_${Date.now()}.jpg`, { type: 'image/jpeg' });
+      // Bearbeitetes Bild zu Uploadthing hochladen
+      const uploadRes = await startUpload([file]);
+      if (uploadRes && uploadRes.length > 0) {
+        const avatarUrl = uploadRes[0].url;
+        
+        // Add to pending changes (not saved yet)
+        setPendingChanges(prev => ({ 
+          ...prev, 
+          avatarUrl,
+          originalAvatarUrl: getCurrentData('originalAvatarUrl') || originalData.originalAvatarUrl
+        }));
+        
+        if (onEditDataChange) {
+          const previewData = { 
+            ...originalData, 
+            ...pendingChanges, 
+            avatarUrl,
+            originalAvatarUrl: getCurrentData('originalAvatarUrl') || originalData.originalAvatarUrl
+          };
+          onEditDataChange(previewData);
+        }
+        
+        setEditorOpen(false);
+        toast({ 
+          title: "Avatar bearbeitet", 
+          description: "Das bearbeitete Bild wurde zur Vorschau hinzugefügt. Speichere deine Änderungen, um es zu übernehmen." 
+        });
       } else {
-        toast({ title: t.error, description: t.avatarRemoveFailed, variant: "destructive" });
+        toast({ title: "Fehler", description: "Upload fehlgeschlagen.", variant: "destructive" });
       }
-    } catch (e) {
-      toast({ title: t.error, description: t.avatarRemoveFailed, variant: "destructive" });
+    } catch (error) {
+      toast({ title: "Fehler", description: "Upload fehlgeschlagen.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleRemoveAvatar = async () => {
+    // Add to pending changes (not saved yet)
+    setPendingChanges(prev => ({ ...prev, avatarUrl: "", originalAvatarUrl: "" }));
+    if (onEditDataChange) {
+      const previewData = { ...originalData, ...pendingChanges, avatarUrl: "", originalAvatarUrl: "" };
+      onEditDataChange(previewData);
+    }
+    toast({ title: "Avatar entfernt", description: "Avatar wurde zur Vorschau entfernt. Speichere deine Änderungen, um es zu übernehmen." });
+    // File-Input nach Entfernen zurücksetzen
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   const handleUsernameChange = async () => {
-          if (usernameData.newUsername !== usernameData.confirmation) {
-        setUsernameError(t.usernameError);
-        return;
-      }
+    if (usernameData.newUsername !== usernameData.confirmation) {
+      setUsernameError(t.usernameError);
+      return;
+    }
 
     setIsChangingUsername(true);
     setUsernameError(null);
@@ -330,6 +361,8 @@ export default function ProfileEditor({ profile, onUpdate, editProfile, setEditP
         onUpdate(updatedProfile);
         setUsernameDialogOpen(false);
         setUsernameData({ newUsername: "", confirmation: "" });
+        // Update original data immediately for username changes
+        setOriginalData(prev => ({ ...prev, username: usernameData.newUsername }));
         toast({ title: t.usernameChanged, description: 'Dein Benutzername wurde erfolgreich geändert.' });
       } else {
         const errorData = await response.json();
@@ -341,7 +374,7 @@ export default function ProfileEditor({ profile, onUpdate, editProfile, setEditP
   };
 
   const copyProfileUrl = async () => {
-    const url = `http://linkulike.local:3000/${profile.username}`;
+    const url = `http://linkulike.local:3000/${getCurrentData('username')}`;
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(url);
@@ -382,35 +415,171 @@ export default function ProfileEditor({ profile, onUpdate, editProfile, setEditP
     return new Date(lastChange.getTime() + (1000 * 60 * 60 * 24 * 30));
   };
 
-  const publicUrl = `http://linkulike.local:3000/${profile.username}`;
+  const publicUrl = `http://linkulike.local:3000/${getCurrentData('username')}`;
+
+  const AVATAR_BORDER_COLORS = [
+    "#fff", // Weiß
+    "#222", // Schwarz
+    "#6366f1", // Indigo
+    "#f59e42", // Orange
+    "#10b981", // Green
+    "#ef4444", // Red
+    "#3b82f6", // Blue
+    "#f472b6", // Pink
+    "#facc15", // Yellow
+    "#a3e635", // Lime
+  ];
+  const PRO_AVATAR_BORDER_COLORS = [
+    ...AVATAR_BORDER_COLORS,
+    "#8b5cf6", // Violet
+    "#14b8a6", // Teal
+    "#eab308", // Amber
+    "#f43f5e", // Rose
+    "#0ea5e9", // Sky
+    // ... weitere Farben
+  ];
+
+  // Zentrale Handler-Funktion für alle Edit-Feld-Änderungen
+  const handleEditChange = (field: string, value: any) => {
+    setPendingChanges(prev => {
+      const updated = { ...prev, [field]: value };
+      // Update preview immediately
+      if (onEditDataChange) {
+        const previewData = { ...originalData, ...updated };
+        onEditDataChange(previewData);
+      }
+      return updated;
+    });
+  };
+
+  // Handler for independent avatar border color selection
+  const handleAvatarBorderColorSelect = (color: string) => {
+    setPendingAvatarBorderColor(color);
+    // Show preview immediately
+    if (onEditDataChange) {
+      onEditDataChange({ ...originalData, ...pendingChanges, avatarBorderColor: color });
+    }
+  };
+
+  // Confirm and save avatar border color
+  const handleConfirmAvatarBorderColor = async () => {
+    if (!pendingAvatarBorderColor) return;
+    setIsSavingBorderColor(true);
+    try {
+      const response = await fetch("/api/user/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ avatarBorderColor: pendingAvatarBorderColor }),
+      });
+      if (response.ok) {
+        const updatedProfile = await response.json();
+        setOriginalData(prev => ({ ...prev, avatarBorderColor: pendingAvatarBorderColor }));
+        setPendingAvatarBorderColor(null);
+        if (onEditDataChange) onEditDataChange({ ...updatedProfile, avatarBorderColor: pendingAvatarBorderColor });
+        onUpdate(updatedProfile);
+        toast({ title: "Rahmenfarbe gespeichert", description: "Die neue Avatar-Rahmenfarbe wurde übernommen." });
+      } else {
+        toast({ title: "Fehler", description: "Rahmenfarbe konnte nicht gespeichert werden.", variant: "destructive" });
+      }
+    } finally {
+      setIsSavingBorderColor(false);
+    }
+  };
+
+  // Cancel avatar border color selection
+  const handleCancelAvatarBorderColor = () => {
+    setPendingAvatarBorderColor(null);
+    // Restore preview to last saved color
+    if (onEditDataChange) {
+      onEditDataChange({ ...originalData, ...pendingChanges, avatarBorderColor: originalData.avatarBorderColor });
+    }
+  };
 
   return (
     <div className="max-w-lg ml-0 bg-white rounded-2xl shadow-lg p-8 flex flex-col gap-8 relative">
       {/* Bearbeitungsmodus-Badge */}
       {isEditMode && (
-        <div className="absolute top-4 left-4 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-semibold shadow">Bearbeitungsmodus</div>
+        <div className="absolute top-4 left-4 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-semibold shadow">
+          {hasPendingChanges ? "Änderungen ausstehend" : "Bearbeitungsmodus"}
+        </div>
       )}
+      
       {/* Avatar-Bereich */}
       <div className="flex flex-col items-center gap-2 relative">
-        <div className="relative group">
-          <img
-            src={editData.avatarUrl || "/avatar-placeholder.png"}
-            alt="Avatar"
-            className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-md group-hover:brightness-90 transition"
-            onError={e => { e.currentTarget.src = "/avatar-placeholder.png"; }}
-          />
+        <Avatar className="w-32 h-32 border-4 shadow-md bg-gray-200"
+          style={{ borderColor: (pendingAvatarBorderColor !== null ? pendingAvatarBorderColor : getCurrentData('avatarBorderColor')) || "#fff" }}
+        >
+          <AvatarImage src={getCurrentData('avatarUrl') || undefined} alt={getCurrentData('displayName') || "Avatar"} />
+          <AvatarFallback>
+            <span>{(getCurrentData('displayName') || "U").charAt(0).toUpperCase()}</span>
+          </AvatarFallback>
+        </Avatar>
+        
+        {/* Farbauswahl */}
+        <div className="flex gap-2 mt-2 flex-wrap justify-center items-center bg-gray-50/60 rounded-xl px-4 py-3 border border-gray-100">
+          {(isProUser ? PRO_AVATAR_BORDER_COLORS : AVATAR_BORDER_COLORS).map((color) => (
+            <button
+              key={color}
+              type="button"
+              className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all focus:outline-none focus:ring-2 focus:ring-blue-400
+                ${(pendingAvatarBorderColor !== null ? pendingAvatarBorderColor : getCurrentData('avatarBorderColor')) === color ? 'ring-2 ring-black' : ''}
+                ${color === '#fff' ? 'border-black' : 'border-transparent'}`}
+              style={{ background: color, borderColor: color === '#fff' ? '#222' : color }}
+              onClick={() => handleAvatarBorderColorSelect(color)}
+              aria-label={`Rahmenfarbe ${color}`}
+              tabIndex={0}
+            >
+              {(pendingAvatarBorderColor !== null ? pendingAvatarBorderColor : getCurrentData('avatarBorderColor')) === color && (
+                <span className="block w-3 h-3 rounded-full bg-white border border-black" />
+              )}
+            </button>
+          ))}
+          {/* Inline Confirm and Cancel buttons for avatar border color */}
+          {pendingAvatarBorderColor !== null && (
+            <div className="flex items-center ml-3 gap-1">
+              <button
+                type="button"
+                className="w-7 h-7 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center shadow transition disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-green-400"
+                onClick={handleConfirmAvatarBorderColor}
+                disabled={isSavingBorderColor}
+                aria-label="Rahmenfarbe übernehmen"
+                title="Rahmenfarbe übernehmen"
+                tabIndex={0}
+              >
+                {isSavingBorderColor ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Check className="w-4 h-4" />
+                )}
+              </button>
+              <button
+                type="button"
+                className="w-7 h-7 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-full flex items-center justify-center shadow transition focus:outline-none focus:ring-2 focus:ring-gray-400"
+                onClick={handleCancelAvatarBorderColor}
+                disabled={isSavingBorderColor}
+                aria-label="Abbrechen"
+                title="Abbrechen"
+                tabIndex={0}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
+        <span className="text-xs text-gray-400 mt-1">Avatar-Rahmenfarbe</span>
+        
         {/* Kamera-Icon jetzt UNTER dem Avatar */}
         <button
           type="button"
-          className="mt-2 bg-white rounded-full p-2 shadow hover:bg-gray-100 transition border border-gray-200"
-          onClick={() => setEditorOpen(true)}
+          className="mt-1 bg-white rounded-full p-2 shadow hover:bg-gray-100 transition border border-gray-200"
+          onClick={() => setAvatarModalOpen(true)}
           title="Avatar ändern"
         >
           <Camera className="w-5 h-5 text-gray-700" />
         </button>
         <span className="text-xs text-gray-400 mt-1">Avatar ändern</span>
       </div>
+      
       {/* Profilinfos */}
       <div className={`flex flex-col gap-6 ${isEditMode ? 'border-2 border-blue-300 rounded-xl p-4 bg-blue-50/30' : ''}`}>
         <div>
@@ -418,24 +587,25 @@ export default function ProfileEditor({ profile, onUpdate, editProfile, setEditP
           {isEditMode ? (
             <input
               name="displayName"
-              value={editData.displayName}
-              onChange={e => setEditData(d => ({ ...d, displayName: e.target.value }))}
-              className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-base"
+              value={getCurrentData('displayName') || ""}
+              onChange={e => handleEditChange('displayName', e.target.value)}
+              className="w-full px-4 py-2 rounded-lg border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-base"
               maxLength={32}
               required
             />
           ) : (
-            <div className="py-2 px-4 bg-gray-50 rounded text-gray-800 border border-gray-100">{editData.displayName}</div>
+            <div className="py-2 px-4 bg-gray-50 rounded text-gray-800 border border-gray-100">{getCurrentData('displayName')}</div>
           )}
         </div>
+        
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
           <div className="flex items-center gap-2">
             <input
               name="username"
-              value={profile.username}
+              value={getCurrentData('username') || ""}
               disabled
-              className="w-full px-4 py-2 rounded-lg border border-gray-100 bg-gray-50 text-gray-400 text-base cursor-not-allowed"
+              className="w-full px-4 py-2 rounded-lg border-2 border-gray-200 bg-gray-100 text-gray-500"
             />
             {isEditMode && (
               <Button
@@ -448,6 +618,7 @@ export default function ProfileEditor({ profile, onUpdate, editProfile, setEditP
               </Button>
             )}
           </div>
+          
           {/* Username-Dialog */}
           <Dialog open={usernameDialogOpen} onOpenChange={setUsernameDialogOpen}>
             <DialogContent className="sm:max-w-md bg-white shadow-xl rounded-xl border border-gray-200 p-6">
@@ -512,41 +683,57 @@ export default function ProfileEditor({ profile, onUpdate, editProfile, setEditP
             </DialogContent>
           </Dialog>
         </div>
+        
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
           {isEditMode ? (
             <textarea
               name="bio"
-              value={editData.bio}
-              onChange={e => setEditData(d => ({ ...d, bio: e.target.value }))}
-              className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-base min-h-[60px]"
+              value={getCurrentData('bio') || ""}
+              onChange={e => handleEditChange('bio', e.target.value)}
+              className="w-full px-4 py-2 rounded-lg border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-base min-h-[80px] resize-none outline-none transition-colors"
               maxLength={160}
+              rows={3}
             />
           ) : (
-            <div className="py-2 px-4 bg-gray-50 rounded text-gray-800 border border-gray-100 min-h-[60px]">{editData.bio}</div>
+            <div className="py-2 px-4 bg-gray-50 rounded text-gray-800 border border-gray-100 min-h-[60px]">{getCurrentData('bio')}</div>
           )}
-          <div className="text-xs text-gray-400 text-right mt-1">{editData.bio.length}/160</div>
+          <div className="text-xs text-gray-400 text-right">{(getCurrentData('bio') || "").length}/160</div>
         </div>
       </div>
+      
       {/* Speichern/Abbrechen-Button nur im Edit-Mode */}
       {isEditMode ? (
-        <div className="flex justify-end gap-2 mt-4">
-          <button
-            type="button"
-            onClick={handleSaveProfile}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold shadow hover:bg-blue-700 transition disabled:opacity-60"
-            disabled={isLoading || !hasProfileChanges}
-          >
-            {isLoading ? "Speichern..." : "Speichern"}
-          </button>
-          <button
-            type="button"
-            onClick={() => { setIsEditMode(false); setEditData({ displayName: profile.displayName || "", bio: profile.bio || "", avatarUrl: profile.avatarUrl || "" }); }}
-            className="bg-gray-100 text-gray-700 px-6 py-2 rounded-lg font-semibold shadow hover:bg-gray-200 transition"
-            disabled={isLoading}
-          >
-            Abbrechen
-          </button>
+        <div className="flex justify-between gap-2 mt-4">
+          {hasPendingChanges && (
+            <button
+              type="button"
+              onClick={handleResetChanges}
+              className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-semibold shadow hover:bg-gray-200 transition flex items-center gap-2"
+              disabled={isLoading}
+            >
+              <RotateCcw className="w-4 h-4" />
+              Zurücksetzen
+            </button>
+          )}
+          <div className="flex gap-2 ml-auto">
+            <button
+              type="button"
+              onClick={handleSaveProfile}
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold shadow hover:bg-blue-700 transition disabled:opacity-60"
+              disabled={isLoading || !hasPendingChanges}
+            >
+              {isLoading ? "Speichern..." : "Änderungen speichern"}
+            </button>
+            <button
+              type="button"
+              onClick={handleCancelEdit}
+              className="bg-gray-100 text-gray-700 px-6 py-2 rounded-lg font-semibold shadow hover:bg-gray-200 transition"
+              disabled={isLoading}
+            >
+              Abbrechen
+            </button>
+          </div>
         </div>
       ) : (
         <button
@@ -557,34 +744,22 @@ export default function ProfileEditor({ profile, onUpdate, editProfile, setEditP
           Profil bearbeiten
         </button>
       )}
-      {/* Avatar Editor Modal */}
-      {editorOpen && (
-        <AvatarEditor
-          image={selectedImage || editData.avatarUrl || null}
-          onCropComplete={handleCropComplete}
-          onCancel={handleAvatarEditorCancel}
-          isUploading={isUploading || isLoading}
-          onRemove={async () => {
-            setIsLoading(true);
-            setEditData(prev => ({ ...prev, avatarUrl: "" }));
-            if (setEditProfile) setEditProfile({ displayName: editData.displayName, bio: editData.bio, avatarUrl: "" });
-            const response = await fetch("/api/user/profile", {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ ...editData, avatarUrl: "" }),
-            });
-            if (response.ok) {
-              const updatedProfile = await response.json();
-              onUpdate(updatedProfile);
-              if (typeof fetchProfile === 'function') fetchProfile();
-              toast({ title: t.avatarRemoved, description: "Avatar wurde erfolgreich entfernt" });
-              setEditorOpen(false);
-              setIsLoading(false);
-            } else {
-              toast({ title: t.error, description: t.avatarRemoveFailed, variant: "destructive" });
-              setIsLoading(false);
+      
+      {/* AvatarUploadFlow-Modal */}
+      {avatarModalOpen && (
+        <AvatarUploadFlow
+          initialAvatarUrl={getCurrentData('avatarUrl')}
+          initialOriginalAvatarUrl={getCurrentData('originalAvatarUrl')}
+          onAvatarChange={(avatarUrl, originalAvatarUrl) => {
+            setPendingChanges(prev => ({ ...prev, avatarUrl, originalAvatarUrl }));
+            if (onEditDataChange) {
+              const previewData = { ...originalData, ...pendingChanges, avatarUrl, originalAvatarUrl };
+              onEditDataChange(previewData);
             }
+            if (typeof fetchProfile === 'function') fetchProfile();
           }}
+          onClose={() => setAvatarModalOpen(false)}
+          userId={profile.id || profile.userId || ''}
         />
       )}
     </div>

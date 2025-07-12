@@ -1,87 +1,77 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { BarChart3, User, Palette, Link as LinkIcon, Settings, LogOut, ChevronLeft, ChevronRight } from "lucide-react"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
+import { Home, Link2, User, Palette, BarChart3, Settings, ChevronLeft, ChevronRight } from "lucide-react";
+import Link from "next/link";
+import { usePathname, useParams } from "next/navigation";
+import { Avatar, AvatarImage, AvatarFallback } from "../ui/avatar";
 
 interface SidebarProps {
-  activeTab: string
-  onTabChange: (tab: string) => void
-  profile: {
-    displayName: string
-    avatarUrl: string
-  } | null
-  onLogout?: () => void
+  collapsed: boolean;
+  setCollapsed: (collapsed: boolean) => void;
 }
 
-const navItems = [
-  { id: "links", label: "Links", icon: LinkIcon },
-  { id: "profile", label: "Profil", icon: User },
-  { id: "theme", label: "Design", icon: Palette },
-  { id: "analytics", label: "Analytics", icon: BarChart3 },
-  { id: "settings", label: "Einstellungen", icon: Settings },
-]
+export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
+  const pathname = usePathname();
+  const params = useParams();
+  const userId = params.userId as string;
 
-export function Sidebar({ activeTab, onTabChange, profile, onLogout }: SidebarProps) {
-  const router = useRouter()
-  const [collapsed, setCollapsed] = useState(false)
+  const navItems = [
+    { href: `/${userId}/dashboard`, icon: Home, label: "Dashboard" },
+    { href: `/${userId}/links`, icon: Link2, label: "Links" },
+    { href: `/${userId}/profile`, icon: User, label: "Profil" },
+    { href: `/${userId}/design`, icon: Palette, label: "Design" },
+    { href: `/${userId}/analytics`, icon: BarChart3, label: "Analytics" },
+    { href: `/${userId}/settings`, icon: Settings, label: "Einstellungen" },
+  ];
 
   return (
-    <aside className={`hidden lg:flex flex-col h-screen sticky top-0 left-0 z-40 bg-white border-r border-gray-100 shadow-sm transition-all duration-200 ${collapsed ? 'w-20' : 'w-56'}`}>
-      {/* Logo */}
-      <div className="flex items-center h-16 px-6 border-b border-gray-100">
-        <div className="flex items-center space-x-2">
-          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
-            <span className="text-white font-bold text-sm">L</span>
+    <nav className={`flex flex-col h-full bg-white border-r border-gray-100 py-4 px-2 select-none sticky top-0 z-30 transition-all duration-200 ${collapsed ? 'w-16' : 'w-56'}`}>
+      {/* Branding (Logo + Schriftzug als ein Link) */}
+      <div className={`flex flex-col items-center ${collapsed ? 'gap-2' : 'gap-3'} mb-6`}>
+        <Link href={`/${userId}/dashboard`} className={`flex items-center justify-center group rounded-lg transition-colors ${collapsed ? 'w-10 h-10' : 'w-full px-2 py-1.5'} hover:bg-gray-100`}>
+          <div className={`bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center ${collapsed ? 'w-8 h-8' : 'w-9 h-9'} transition-all`}>
+            <span className={`text-white font-bold ${collapsed ? 'text-base' : 'text-lg'} transition-all`}>L</span>
           </div>
-          {!collapsed && <span className="text-xl font-bold text-gray-900">Linkulike</span>}
-        </div>
+          {!collapsed && <span className="font-bold text-xl text-gray-900 ml-3 transition-all">linkulike</span>}
+        </Link>
       </div>
-      {/* Navigation */}
-      <nav className="flex-1 flex flex-col gap-1 mt-6 px-2 relative">
-        {navItems.map((item) => {
-          const Icon = item.icon
+      {/* Collapse-Button auf der Trennlinie, immer mittig */}
+      <button
+        onClick={() => setCollapsed(!collapsed)}
+        className="absolute right-[-16px] top-1/2 -translate-y-1/2 flex items-center justify-center rounded-full border border-gray-200 bg-white shadow transition-colors w-8 h-8 hover:bg-gray-100 focus:outline-none z-40"
+        aria-label={collapsed ? "Menü ausklappen" : "Menü einklappen"}
+        style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.10)' }}
+      >
+        {collapsed ? <ChevronRight className="w-4 h-4 text-gray-400" /> : <ChevronLeft className="w-4 h-4 text-gray-400" />}
+      </button>
+      {/* Navigation Items */}
+      <div className={`flex flex-col gap-1 flex-1 ${collapsed ? 'items-center' : ''}`}>
+        {navItems.map(({ href, icon: Icon, label }) => {
+          const active = pathname?.startsWith(href);
           return (
-            <Button
-              key={item.id}
-              variant={activeTab === item.id ? "default" : "ghost"}
-              className={`w-full flex items-center gap-3 justify-start px-4 py-3 rounded-lg text-base font-medium ${activeTab === item.id ? 'bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700' : 'text-gray-700'}`}
-              onClick={() => onTabChange(item.id)}
-            >
-              <Icon className="w-5 h-5" />
-              {!collapsed && <span>{item.label}</span>}
-            </Button>
-          )
+            <Link key={href} href={href} className={`group relative flex items-center ${collapsed ? 'justify-center' : 'gap-3'} px-0 py-1.5 rounded-lg transition-colors font-medium text-base w-full`}>
+              <div className={`flex items-center justify-center w-10 h-10 rounded-lg transition-colors ${active ? 'bg-blue-100 text-blue-700' : 'text-gray-400 group-hover:bg-gray-100 group-hover:text-blue-600'}`}>
+                <Icon className="w-5 h-5" />
+              </div>
+              {!collapsed && <span className={`ml-2 text-gray-700 ${active ? 'font-semibold text-blue-700' : ''}`}>{label}</span>}
+              {/* Tooltip im collapsed state */}
+              {collapsed && (
+                <span className="absolute left-14 top-1/2 -translate-y-1/2 scale-0 group-hover:scale-100 transition bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-50 pointer-events-none">
+                  {label}
+                </span>
+              )}
+            </Link>
+          );
         })}
-        {/* Sidebar Toggle Button - auf Höhe des ersten Menüpunktes, dezent */}
-        <button
-          className="absolute top-[72px] -right-2 bg-white border border-gray-200 rounded-full shadow-sm p-1.5 hover:bg-gray-50 transition-colors z-50"
-          style={{ boxShadow: '0 1px 4px 0 rgba(0,0,0,0.04)' }}
-          onClick={() => setCollapsed(!collapsed)}
-          title={collapsed ? "Menü ausklappen" : "Menü einklappen"}
-          aria-label={collapsed ? "Menü ausklappen" : "Menü einklappen"}
-        >
-          {collapsed ? <ChevronRight className="w-4 h-4 text-gray-500" /> : <ChevronLeft className="w-4 h-4 text-gray-500" />}
-        </button>
-      </nav>
-      {/* User Info & Logout */}
-      <div className="flex flex-col items-center gap-2 p-4 border-t border-gray-100 mt-auto">
-        {profile && (
-          <div className="flex items-center gap-3 w-full">
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={profile.avatarUrl} alt={profile.displayName} />
-              <AvatarFallback>{profile.displayName?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
-            </Avatar>
-            {!collapsed && <span className="font-semibold text-gray-900 truncate">{profile.displayName}</span>}
-          </div>
-        )}
-        <Button variant="ghost" className="w-full mt-2 flex items-center gap-2 justify-start" onClick={onLogout}>
-          <LogOut className="w-4 h-4" />
-          {!collapsed && <span>Abmelden</span>}
-        </Button>
       </div>
-    </aside>
-  )
+      {/* Avatar/Account-Button ganz unten */}
+      <div className={`mt-auto flex items-center ${collapsed ? 'justify-center' : 'gap-3 px-3'} mb-2`}>
+        <Avatar>
+          <AvatarImage src={"/avatar-placeholder.png"} alt="Account" />
+          <AvatarFallback>N</AvatarFallback>
+        </Avatar>
+        {!collapsed && <span className="text-gray-700 font-medium">Account</span>}
+      </div>
+    </nav>
+  );
 } 

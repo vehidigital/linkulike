@@ -3,11 +3,14 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth-options"
 import { prisma } from "@/lib/db"
 import { z } from "zod"
+import { utapi } from "@/lib/uploadthing-server";
 
 const profileUpdateSchema = z.object({
   displayName: z.string().min(1).max(100).optional(),
   bio: z.string().max(500).optional(),
   avatarUrl: z.string().url().optional(),
+  originalAvatarUrl: z.string().url().optional(),
+  avatarBorderColor: z.string().optional(),
   theme: z.string().optional(),
   backgroundColor: z.string().optional(),
   backgroundGradient: z.string().optional(),
@@ -35,6 +38,8 @@ export async function GET() {
         displayName: true,
         bio: true,
         avatarUrl: true,
+        originalAvatarUrl: true, // Originalbild für das Frontend verfügbar machen
+        avatarBorderColor: true, // Avatar-Rahmenfarbe
         theme: true,
         backgroundColor: true,
         backgroundGradient: true,
@@ -47,6 +52,9 @@ export async function GET() {
         createdAt: true,
         updatedAt: true,
         lastUsernameChange: true,
+        links: {
+          orderBy: { position: "asc" },
+        },
       },
     })
 
@@ -79,6 +87,8 @@ export async function PUT(request: NextRequest) {
       displayName,
       bio,
       avatarUrl,
+      originalAvatarUrl,
+      avatarBorderColor,
       theme,
       backgroundColor,
       backgroundGradient,
@@ -114,6 +124,32 @@ export async function PUT(request: NextRequest) {
       updateUsername = true;
     }
 
+    // --- Avatar-Handling: Altes Bild löschen, wenn neues hochgeladen oder entfernt wird ---
+    let oldAvatarUrl = user?.avatarUrl;
+    let shouldDeleteOldAvatar = false;
+    let oldFileKey = null;
+    if (oldAvatarUrl && (avatarUrl === "" || (avatarUrl && avatarUrl !== oldAvatarUrl))) {
+      // Extrahiere FileKey aus alter URL (z.B. .../f/<fileKey>)
+      const match = oldAvatarUrl.match(/\/f\/([^/?#]+)/);
+      if (match && match[1]) {
+        oldFileKey = match[1];
+        shouldDeleteOldAvatar = true;
+      }
+    }
+
+    // --- Original-Avatar-Handling: Altes Original löschen, wenn neues hochgeladen wird ---
+    let oldOriginalAvatarUrl = user?.originalAvatarUrl;
+    let shouldDeleteOldOriginal = false;
+    let oldOriginalFileKey = null;
+    if (oldOriginalAvatarUrl && (originalAvatarUrl && originalAvatarUrl !== oldOriginalAvatarUrl)) {
+      const match = oldOriginalAvatarUrl.match(/\/f\/([^/?#]+)/);
+      if (match && match[1]) {
+        oldOriginalFileKey = match[1];
+        shouldDeleteOldOriginal = true;
+      }
+    }
+
+    // Update User in DB
     const updatedUser = await prisma.user.update({
       where: { email: session.user.email },
       data: {
@@ -121,7 +157,9 @@ export async function PUT(request: NextRequest) {
         lastUsernameChange: updateUsername ? new Date() : undefined,
         displayName: displayName || undefined,
         bio: bio || undefined,
-        avatarUrl: avatarUrl || undefined,
+        avatarUrl: avatarUrl === "" ? null : avatarUrl || undefined,
+        originalAvatarUrl: originalAvatarUrl === "" ? null : originalAvatarUrl || undefined,
+        avatarBorderColor: avatarBorderColor || undefined,
         theme: theme || undefined,
         backgroundColor: backgroundColor || undefined,
         backgroundGradient: backgroundGradient || undefined,
@@ -137,6 +175,8 @@ export async function PUT(request: NextRequest) {
         displayName: true,
         bio: true,
         avatarUrl: true,
+        originalAvatarUrl: true,
+        avatarBorderColor: true,
         theme: true,
         backgroundColor: true,
         backgroundGradient: true,
@@ -149,8 +189,29 @@ export async function PUT(request: NextRequest) {
         createdAt: true,
         updatedAt: true,
         lastUsernameChange: true,
+        links: {
+          orderBy: { position: "asc" },
+        },
       },
     })
+
+    // Nach erfolgreichem Update: Altes Avatar-Bild bei Uploadthing löschen
+    if (shouldDeleteOldAvatar && oldFileKey) {
+      try {
+        await utapi.deleteFiles(oldFileKey);
+      } catch (err) {
+        console.error("Fehler beim Löschen des alten Avatars bei Uploadthing:", err);
+      }
+    }
+
+    // Nach erfolgreichem Update: Altes Originalbild löschen
+    if (shouldDeleteOldOriginal && oldOriginalFileKey) {
+      try {
+        await utapi.deleteFiles(oldOriginalFileKey);
+      } catch (err) {
+        console.error("Fehler beim Löschen des alten Original-Avatars bei Uploadthing:", err);
+      }
+    }
 
     return NextResponse.json(updatedUser)
   } catch (error) {

@@ -106,12 +106,13 @@ const AvatarEditor: React.FC<AvatarEditorProps> = ({ image, onCropComplete, onCa
             <span className="mt-3 text-sm text-gray-700 font-medium">Avatar wird gespeichert...</span>
           </div>
         )}
-        {/* Neues Foto hochladen */}
+        {/* Neues Foto hochladen immer oben, mit Abstand nach unten */}
         <button
           type="button"
-          className="mb-4 px-4 py-2 bg-gray-100 text-gray-700 rounded shadow hover:bg-gray-200 transition"
+          className="mb-4 px-4 py-2 bg-gray-100 text-gray-700 rounded shadow hover:bg-gray-200 transition self-stretch"
           onClick={() => fileInputRef.current?.click()}
           disabled={isUploading}
+          style={{ marginBottom: localImage ? '1.5rem' : '2rem' }}
         >
           Neues Foto hochladen
         </button>
@@ -125,7 +126,7 @@ const AvatarEditor: React.FC<AvatarEditorProps> = ({ image, onCropComplete, onCa
         {/* Cropper & Controls nur wenn Bild vorhanden */}
         {localImage && (
           <>
-            <div className="relative w-60 h-60 bg-gray-100 rounded-full overflow-hidden">
+            <div className="relative w-60 h-60 bg-gray-100 rounded-full overflow-hidden mb-4">
               <Cropper
                 image={localImage}
                 crop={crop}
@@ -142,7 +143,7 @@ const AvatarEditor: React.FC<AvatarEditorProps> = ({ image, onCropComplete, onCa
                 maxZoom={3}
               />
             </div>
-            <div className="flex flex-col gap-2 w-full mt-4">
+            <div className="flex flex-col gap-2 w-full mb-2">
               <label className="text-xs">Zoom</label>
               <input type="range" min={1} max={3} step={0.01} value={zoom} onChange={e => setZoom(Number(e.target.value))} disabled={isUploading} />
               <label className="text-xs mt-2">Rotation</label>
@@ -150,9 +151,9 @@ const AvatarEditor: React.FC<AvatarEditorProps> = ({ image, onCropComplete, onCa
             </div>
           </>
         )}
-        <div className="flex gap-4 mt-6 w-full justify-end">
+        <div className="flex gap-4 mt-6 w-full justify-between">
           {onRemove && (
-            <button type="button" onClick={onRemove} className="px-3 py-1 rounded bg-red-100 text-red-700 text-sm mr-auto" disabled={isUploading}>Bild entfernen</button>
+            <button type="button" onClick={onRemove} className="px-3 py-1 rounded bg-red-100 text-red-700 text-sm" disabled={isUploading}>{'Bild entfernen'}</button>
           )}
           <button type="button" onClick={onCancel} className="px-3 py-1 rounded bg-gray-200 text-gray-700 text-sm" disabled={isUploading}>Abbrechen</button>
           <button type="button" onClick={handleDone} className="px-4 py-1 rounded bg-black text-white text-sm font-semibold" disabled={loading || isUploading || !localImage}>{loading ? 'Speichern...' : 'Speichern'}</button>
