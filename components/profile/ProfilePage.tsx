@@ -23,6 +23,7 @@ interface User {
   fontFamily: string;
   links: Link[];
   buttonTextColor?: string;
+  backgroundImageUrl?: string;
 }
 
 interface Link {
@@ -161,6 +162,15 @@ export default function ProfilePage({ user }: ProfilePageProps) {
 
   const buttonStyle = getButtonStyle();
 
+  const hasBgImage = !!user.backgroundImageUrl;
+  const previewBgStyle = hasBgImage
+    ? {
+        backgroundImage: `url(${user.backgroundImageUrl})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }
+    : containerStyle;
+
   function getInitial(user: User): string {
     const base = user.displayName || user.username;
     if (base && typeof base === 'string' && base.length > 0) {
@@ -171,10 +181,14 @@ export default function ProfilePage({ user }: ProfilePageProps) {
 
   return (
     <div
-      className="min-h-screen flex flex-col items-center justify-center px-4 py-8"
-      style={containerStyle}
+      className="min-h-screen flex flex-col items-center justify-center px-4 py-8 relative"
+      style={previewBgStyle}
     >
-      <div className="w-full max-w-[375px] mx-auto space-y-8">
+      {/* Overlay für Lesbarkeit, nur wenn Bild */}
+      {hasBgImage && (
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1 }} />
+      )}
+      <div className="w-full max-w-[375px] mx-auto space-y-8" style={hasBgImage ? { position: 'relative', zIndex: 2 } : {}}>
         {/* Profile Header */}
         <div className="text-center space-y-4">
           <Avatar className="w-24 h-24 mx-auto border-4 border-white/20 shadow-lg bg-gray-200">

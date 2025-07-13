@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useProfile } from "@/components/profile/ProfileContext";
 import { ProfilePreview } from "@/components/profile/ProfilePreview";
 import ThemeEditor from "@/components/dashboard/ThemeEditor";
@@ -11,6 +11,8 @@ export default function UserDesignPage() {
   const { profile, links, isLoading, updateProfile } = useProfile();
   const [showPreview, setShowPreview] = useState(true);
   const [pendingProfile, setPendingProfile] = useState(profile);
+  const [themeChangePending, setThemeChangePending] = useState(false);
+  const skipProfileReset = useRef(false);
 
   const previewToggle = (
     <Button
@@ -23,13 +25,6 @@ export default function UserDesignPage() {
       <span className="hidden sm:inline">{showPreview ? "Preview ausblenden" : "Preview anzeigen"}</span>
     </Button>
   );
-
-  // Update pendingProfile when profile changes
-  useEffect(() => {
-    if (profile && pendingProfile?.username !== profile?.username) {
-      setPendingProfile(profile);
-    }
-  }, [profile, pendingProfile?.username]);
 
   if (isLoading || !profile) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
@@ -50,6 +45,10 @@ export default function UserDesignPage() {
         currentLang={pendingProfile?.lang || profile.lang || "de"}
         textColor={pendingProfile?.textColor || profile.textColor}
         themeId={pendingProfile?.theme || profile.theme}
+        fontFamily={pendingProfile?.fontFamily || profile.fontFamily}
+        backgroundImageUrl={pendingProfile?.backgroundImageUrl || profile.backgroundImageUrl}
+        backgroundCropDesktop={pendingProfile?.backgroundCropDesktop || profile.backgroundCropDesktop}
+        backgroundCropMobile={pendingProfile?.backgroundCropMobile || profile.backgroundCropMobile}
       />}
       showPreview={showPreview}
       previewToggle={previewToggle}
@@ -62,7 +61,6 @@ export default function UserDesignPage() {
         onUpdate={updateProfile} 
         isProUser={false}
         setPendingProfile={(newProfile) => setPendingProfile(newProfile as any)}
-        currentLang={profile.lang || "de"}
       />
     </DashboardLayout>
   );

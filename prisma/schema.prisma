@@ -29,6 +29,10 @@ model User {
   textColor           String?  @default("#ffffff")
   fontFamily          String?  @default("Inter")
 
+  backgroundImageUrl String? // URL für eigenes Hintergrundbild
+  backgroundCropDesktop Json? // Crop-Parameter für Desktop (x, y, width, height, zoom, rotation)
+  backgroundCropMobile Json? // Crop-Parameter für Mobile (x, y, width, height, zoom, rotation)
+
   isPremium           Boolean  @default(false)
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt

@@ -19,6 +19,9 @@ const profileUpdateSchema = z.object({
   buttonGradient: z.string().optional(),
   textColor: z.string().optional(),
   fontFamily: z.string().optional(),
+  backgroundImageUrl: z.string().url().optional(),
+  backgroundCropDesktop: z.any().optional(),
+  backgroundCropMobile: z.any().optional(),
 })
 
 // GET /api/user/profile - Get current user's profile
@@ -38,7 +41,6 @@ export async function GET() {
         displayName: true,
         bio: true,
         avatarUrl: true,
-        originalAvatarUrl: true, // Originalbild für das Frontend verfügbar machen
         avatarBorderColor: true, // Avatar-Rahmenfarbe
         theme: true,
         backgroundColor: true,
@@ -48,6 +50,9 @@ export async function GET() {
         buttonGradient: true,
         textColor: true,
         fontFamily: true,
+        backgroundImageUrl: true,
+        backgroundCropDesktop: true,
+        backgroundCropMobile: true,
         isPremium: true,
         createdAt: true,
         updatedAt: true,
@@ -87,7 +92,6 @@ export async function PUT(request: NextRequest) {
       displayName,
       bio,
       avatarUrl,
-      originalAvatarUrl,
       avatarBorderColor,
       theme,
       backgroundColor,
@@ -97,6 +101,9 @@ export async function PUT(request: NextRequest) {
       buttonGradient,
       textColor,
       fontFamily,
+      backgroundImageUrl,
+      backgroundCropDesktop,
+      backgroundCropMobile,
     } = body
 
     // Check if username is being changed and if it's already taken
@@ -158,7 +165,6 @@ export async function PUT(request: NextRequest) {
         displayName: displayName || undefined,
         bio: bio || undefined,
         avatarUrl: avatarUrl === "" ? null : avatarUrl || undefined,
-        originalAvatarUrl: originalAvatarUrl === "" ? null : originalAvatarUrl || undefined,
         avatarBorderColor: avatarBorderColor || undefined,
         theme: theme || undefined,
         backgroundColor: backgroundColor || undefined,
@@ -168,6 +174,9 @@ export async function PUT(request: NextRequest) {
         buttonGradient: buttonGradient || undefined,
         textColor: textColor || undefined,
         fontFamily: fontFamily || undefined,
+        backgroundImageUrl: backgroundImageUrl === "" ? null : backgroundImageUrl || undefined,
+        backgroundCropDesktop: backgroundCropDesktop || undefined,
+        backgroundCropMobile: backgroundCropMobile || undefined,
       },
       select: {
         id: true,
@@ -175,7 +184,6 @@ export async function PUT(request: NextRequest) {
         displayName: true,
         bio: true,
         avatarUrl: true,
-        originalAvatarUrl: true,
         avatarBorderColor: true,
         theme: true,
         backgroundColor: true,
@@ -185,6 +193,9 @@ export async function PUT(request: NextRequest) {
         buttonGradient: true,
         textColor: true,
         fontFamily: true,
+        backgroundImageUrl: true,
+        backgroundCropDesktop: true,
+        backgroundCropMobile: true,
         isPremium: true,
         createdAt: true,
         updatedAt: true,

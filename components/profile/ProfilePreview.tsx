@@ -38,6 +38,7 @@ interface ProfilePreviewProps {
   buttonGradient?: string
   currentLang: "de" | "en"
   textColor?: string
+  fontFamily?: string
   placeholders?: {
     displayName: string
     username: string
@@ -46,6 +47,9 @@ interface ProfilePreviewProps {
   }
   themeId?: string // NEU
   avatarBorderColor?: string // NEU
+  backgroundImageUrl?: string // NEU: Hintergrundbild
+  backgroundCropDesktop?: any;
+  backgroundCropMobile?: any;
 }
 
 const demoLinks: Record<"de" | "en", LinkItem[]> = {
@@ -94,7 +98,17 @@ function getButtonColor(link: UserLink) {
   return STANDARD_COLOR
 }
 
-export const ProfilePreview: React.FC<ProfilePreviewProps> = ({ displayName, username, bio, avatarUrl, links, theme, buttonStyle, buttonColor, buttonGradient, currentLang, textColor, placeholders, themeId, avatarBorderColor }) => {
+// Map für Google Fonts mit Fallback
+const fontFamilyMap: Record<string, string> = {
+  "Inter": "var(--font-inter), sans-serif",
+  "Roboto": "var(--font-roboto), sans-serif",
+  "Open Sans": "var(--font-open-sans), sans-serif",
+  "Poppins": "var(--font-poppins), sans-serif",
+  "Montserrat": "var(--font-montserrat), sans-serif",
+  "Playfair Display": "var(--font-playfair), serif",
+};
+
+export const ProfilePreview: React.FC<ProfilePreviewProps> = ({ displayName, username, bio, avatarUrl, links, theme, buttonStyle, buttonColor, buttonGradient, currentLang, textColor, fontFamily, placeholders, themeId, avatarBorderColor, backgroundImageUrl, backgroundCropDesktop, backgroundCropMobile }) => {
   const t = getTranslations(currentLang);
   const name = displayName || placeholders?.displayName || (currentLang === "de" ? "Max Mustermann" : "Max Example")
   const uname = username || placeholders?.username || (currentLang === "de" ? "maxmustermann" : "maxexample")
@@ -134,13 +148,33 @@ export const ProfilePreview: React.FC<ProfilePreviewProps> = ({ displayName, use
   console.log('ProfilePreview avatarUrl:', avatarUrl);
   // Debug: Log avatarBorderColor for live preview troubleshooting
   console.log('ProfilePreview avatarBorderColor:', avatarBorderColor);
+  // Debug: Log fontFamily for live preview troubleshooting
+  console.log('ProfilePreview fontFamily:', fontFamily);
+
+  // Hintergrundbild-Logik
+  const hasBgImage = !!backgroundImageUrl;
+  // Device detection (simple):
+  const isMobile = typeof window !== 'undefined' ? window.innerWidth < 600 : false;
+  const crop = isMobile ? backgroundCropMobile : backgroundCropDesktop;
+  // Crop-Logik für CSS:
+  let bgImageStyle: React.CSSProperties = backgroundImageUrl
+    ? {
+        backgroundImage: `url(${backgroundImageUrl})`,
+        backgroundSize: 'cover',
+        backgroundPosition: crop && crop.croppedAreaPixels ? `${-crop.croppedAreaPixels.x}px ${-crop.croppedAreaPixels.y}px` : 'center',
+      }
+    : { background: bg };
 
   return (
     <div
       className={`w-[320px] max-w-full rounded-[2.2rem] mx-auto relative overflow-visible flex flex-col items-center justify-start border border-gray-200 ${isLightTheme ? 'shadow-md' : 'shadow-sm'}`}
-      style={{ aspectRatio: '9/19', background: bg, boxShadow: isLightTheme ? '0 2px 12px 0 rgba(0,0,0,0.06)' : '0 1.5px 6px 0 rgba(0,0,0,0.04)', padding: '2.5rem 1.2rem 2rem 1.2rem' }}
+      style={{ aspectRatio: '9/19', ...bgImageStyle, boxShadow: isLightTheme ? '0 2px 12px 0 rgba(0,0,0,0.06)' : '0 1.5px 6px 0 rgba(0,0,0,0.04)', padding: '2.5rem 1.2rem 2rem 1.2rem', fontFamily: fontFamilyMap[fontFamily || 'Inter'] }}
     >
-      <div className="w-full max-w-md mx-auto space-y-8">
+      {/* Overlay für Lesbarkeit, nur wenn Bild */}
+      {hasBgImage && (
+        <div style={{ position: 'absolute', inset: 0, borderRadius: '2.2rem', background: 'rgba(0,0,0,0.45)', zIndex: 1 }} />
+      )}
+      <div className="w-full max-w-md mx-auto space-y-8" style={hasBgImage ? { position: 'relative', zIndex: 2 } : {}}>
         {/* Profile Header */}
         <div className="text-center space-y-4">
           <Avatar className="w-24 h-24 mx-auto border-4 shadow-lg bg-gray-200"
