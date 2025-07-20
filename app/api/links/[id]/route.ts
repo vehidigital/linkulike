@@ -12,6 +12,9 @@ const linkUpdateSchema = z.object({
   position: z.number().optional(),
   customColor: z.string().optional(),
   useCustomColor: z.boolean().optional(),
+  highlight: z.boolean().optional(),
+  highlightStyle: z.string().optional(),
+  imageUrl: z.string().optional(),
 })
 
 // GET /api/links/[id] - Get a specific link
@@ -174,7 +177,7 @@ export async function PUT(
     }
 
     const body = await request.json()
-    const { title, url, icon, position, isActive, customColor, useCustomColor } = body
+    const { title, url, icon, position, isActive, customColor, useCustomColor, highlight, highlightStyle, imageUrl } = body
 
     const link = await prisma.link.findFirst({
       where: {
@@ -198,6 +201,9 @@ export async function PUT(
         position: position !== undefined ? position : link.position,
         isActive: isActive !== undefined ? isActive : link.isActive,
         customColor: customColor !== undefined ? customColor : link.customColor,
+        highlight: highlight !== undefined ? highlight : link.highlight,
+        highlightStyle: highlightStyle !== undefined ? highlightStyle : link.highlightStyle,
+        imageUrl: imageUrl !== undefined ? imageUrl : link.imageUrl,
         useCustomColor: useCustomColor !== undefined ? useCustomColor : link.useCustomColor,
       },
     })

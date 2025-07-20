@@ -5,9 +5,10 @@ import { useParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { socialPlatforms, SocialPlatform } from "@/lib/social-icons";
-import { Mail, Facebook, Twitter, Instagram, Youtube, Coffee, Gift, Music, Github, Dribbble, Club, Signal, Twitch, Camera, ShoppingBag, Apple, Smartphone, Globe, Link, User, Phone, MessageCircle, BookOpen, Figma, GripVertical, Pencil, Trash } from "lucide-react";
+import { socialPlatforms, SocialPlatform, getIconForUrl } from "@/lib/social-icons";
+import { Mail, Facebook, Twitter, Instagram, Youtube, Coffee, Gift, Music, Github, Dribbble, Club, Signal, Twitch, Camera, ShoppingBag, Apple, Smartphone, Globe, Link, User, Phone, MessageCircle, BookOpen, Figma, GripVertical, Pencil, Trash, Heart, MapPin } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { eventEmitter, EVENTS } from "@/lib/events";
 
 const iconMap: Record<string, any> = {
   email: Mail,
@@ -39,6 +40,21 @@ const iconMap: Record<string, any> = {
   goodreads: BookOpen,
   figma: Figma,
   "1-on-1": User,
+  linkedin: User,
+  discord: MessageCircle,
+  telegram: MessageCircle,
+  pinterest: ShoppingBag,
+  reddit: BookOpen,
+  medium: BookOpen,
+  behance: Figma,
+  notion: BookOpen,
+  substack: Mail,
+  kofi: Coffee,
+  patreon: Gift,
+  onlyfans: Heart,
+  appstore: Apple,
+  address: MapPin,
+  other: Link,
 };
 
 interface Social {
@@ -46,6 +62,8 @@ interface Social {
   platform: string;
   value: string; // Use 'value' field as per Prisma schema
   position: number;
+  customIcon?: string;
+  isUrl?: boolean;
 }
 
 export function SocialsCard({ onSocialChanged }: { onSocialChanged?: () => void }) {
@@ -58,11 +76,18 @@ export function SocialsCard({ onSocialChanged }: { onSocialChanged?: () => void 
   
   // Add Social State
   const [addSocialOpen, setAddSocialOpen] = useState(false);
-  const [newSocial, setNewSocial] = useState({ platform: '', value: '' });
+  const [newSocial, setNewSocial] = useState({ 
+    platform: '', 
+    value: '', 
+    customPlatform: '', 
+    customIcon: '🔗',
+    isUrl: false 
+  });
   const [addError, setAddError] = useState<string | null>(null);
   
   // Edit Social State
   const [editSocial, setEditSocial] = useState<Social | null>(null);
+  const [editCustomPlatform, setEditCustomPlatform] = useState('');
   const [editError, setEditError] = useState<string | null>(null);
   
   // Delete Social State
@@ -166,14 +191,21 @@ export function SocialsCard({ onSocialChanged }: { onSocialChanged?: () => void 
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ platform: newSocial.platform, url: newSocial.value }),
+        body: JSON.stringify({ 
+          platform: newSocial.platform, 
+          url: newSocial.value,
+          customPlatform: newSocial.customPlatform,
+          customIcon: newSocial.customIcon,
+          isUrl: newSocial.isUrl
+        }),
       });
       
       if (response.ok) {
         setAddSocialOpen(false);
-        setNewSocial({ platform: '', value: '' });
+        setNewSocial({ platform: '', value: '', customPlatform: '', customIcon: '🔗', isUrl: false });
         await loadSocials();
         if (onSocialChanged) onSocialChanged();
+        eventEmitter.emit(EVENTS.SOCIALS_UPDATED);
         toast({ 
           title: 'Erfolgreich', 
           description: 'Social Media wurde hinzugefügt.',
@@ -198,17 +230,21 @@ export function SocialsCard({ onSocialChanged }: { onSocialChanged?: () => void 
     setEditError(null);
     
     try {
-      const url = `/api/user/socials?userId=${userId}`;
+      const url = `/api/user/socials/${editSocial.id}?userId=${userId}`;
       const response = await fetch(url, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify([{ ...editSocial, platform: editSocial.platform, url: editSocial.value }]),
+        body: JSON.stringify({ 
+          platform: editSocial.platform === 'other' ? editCustomPlatform : editSocial.platform, 
+          value: editSocial.value 
+        }),
       });
       
       if (response.ok) {
         setEditSocial(null);
         await loadSocials();
         if (onSocialChanged) onSocialChanged();
+        eventEmitter.emit(EVENTS.SOCIALS_UPDATED);
         toast({ 
           title: 'Erfolgreich', 
           description: 'Social Media wurde aktualisiert.',
@@ -231,17 +267,17 @@ export function SocialsCard({ onSocialChanged }: { onSocialChanged?: () => void 
     setIsSubmitting(true);
     
     try {
-      const url = `/api/user/socials?userId=${userId}`;
+      const url = `/api/user/socials/${deleteSocial.id}?userId=${userId}`;
       const response = await fetch(url, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: deleteSocial.id }),
       });
       
       if (response.ok) {
         setDeleteSocial(null);
         await loadSocials();
         if (onSocialChanged) onSocialChanged();
+        eventEmitter.emit(EVENTS.SOCIALS_UPDATED);
         toast({ 
           title: 'Erfolgreich', 
           description: 'Social Media wurde gelöscht.',
@@ -266,9 +302,31 @@ export function SocialsCard({ onSocialChanged }: { onSocialChanged?: () => void 
   }
 
   // Get Social Icon
-  function getSocialIcon(platform: string): string {
-    const Icon = iconMap[platform] || Link;
-    return Icon ? '🔗' : '🔗';
+  function getSocialIcon(platform: string, customIcon?: string): string {
+    // For "other" platform, use custom icon if available
+    if (platform === 'other' && customIcon) {
+      return customIcon;
+    }
+    
+    // Contact info icons
+    if (platform === 'email') return '📧';
+    if (platform === 'phone') return '📞';
+    if (platform === 'address') return '📍';
+    
+    // Try to find platform in socialPlatforms
+    const socialPlatform = socialPlatforms.find(sp => sp.value === platform);
+    if (socialPlatform) {
+      return socialPlatform.icon;
+    }
+    
+    // Fallback to iconMap for Lucide icons
+    const Icon = iconMap[platform];
+    if (Icon) {
+      return '🔗'; // Use link emoji for Lucide icons
+    }
+    
+    // Default fallback
+    return '🔗';
   }
 
   return (
@@ -322,18 +380,28 @@ export function SocialsCard({ onSocialChanged }: { onSocialChanged?: () => void 
             <GripVertical className="w-5 h-5 text-gray-400 cursor-move flex-shrink-0" />
             <div className="flex items-center gap-3 flex-1 min-w-0">
               <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                <span className="text-lg">{getSocialIcon(social.platform)}</span>
+                {social.platform === 'other' ? (
+                  <span className="text-lg">{getSocialIcon(social.platform, social.customIcon)}</span>
+                ) : (
+                  <div 
+                    className="w-6 h-6"
+                    dangerouslySetInnerHTML={{ __html: getSocialIcon(social.platform) }}
+                  />
+                )}
               </div>
                              <div className="flex-1 min-w-0">
                  <div className="font-semibold text-gray-900 capitalize">{social.platform}</div>
-                 <div className="text-xs text-gray-500 truncate">{social.value}</div>
+                 <div className="text-xs text-gray-500 break-all">{social.value}</div>
                </div>
             </div>
             <div className="flex items-center gap-2 ml-2">
               <button 
                 className="p-2 hover:bg-purple-50 rounded-lg transition-colors" 
                 title="Bearbeiten" 
-                onClick={() => setEditSocial(social)}
+                onClick={() => {
+                  setEditSocial(social);
+                  setEditCustomPlatform(social.platform === 'other' ? social.platform : '');
+                }}
               >
                 <Pencil className="w-4 h-4 text-gray-500 hover:text-purple-600" />
               </button>
@@ -399,34 +467,107 @@ export function SocialsCard({ onSocialChanged }: { onSocialChanged?: () => void 
                 <option value="notion">Notion</option>
                 <option value="medium">Medium</option>
                 <option value="substack">Substack</option>
+                <option value="clubhouse">Clubhouse</option>
+                <option value="signal">Signal</option>
+                <option value="cameo">Cameo</option>
+                <option value="buymeacoffee">Buy Me a Coffee</option>
+                <option value="kofi">Ko-fi</option>
                 <option value="patreon">Patreon</option>
                 <option value="onlyfans">OnlyFans</option>
-                <option value="amazon">Amazon</option>
-                <option value="etsy">Etsy</option>
-                <option value="shopify">Shopify</option>
-                <option value="paypal">PayPal</option>
-                <option value="cashapp">Cash App</option>
-                <option value="venmo">Venmo</option>
-                <option value="bitcoin">Bitcoin</option>
-                <option value="ethereum">Ethereum</option>
+                <option value="producthunt">Product Hunt</option>
+                <option value="appstore">App Store</option>
+                <option value="googleplay">Google Play</option>
                 <option value="website">Website</option>
-                <option value="blog">Blog</option>
-                <option value="portfolio">Portfolio</option>
-                <option value="resume">Resume</option>
-                <option value="calendar">Calendar</option>
-                <option value="email">Email</option>
-                <option value="phone">Phone</option>
-                <option value="address">Address</option>
-                <option value="other">Other</option>
+                <option value="email">E-Mail</option>
+                <option value="phone">Telefon</option>
+                <option value="address">Adresse</option>
+                <option value="other">Sonstiges</option>
               </select>
             </div>
+            
+            {newSocial.platform === 'other' && (
+              <>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Benutzerdefinierte Platform</label>
+                  <Input
+                    placeholder="z.B. Mein Blog, Portfolio, Shop..."
+                    value={newSocial.customPlatform || ''}
+                    onChange={e => setNewSocial({ ...newSocial, customPlatform: e.target.value })}
+                    className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Icon auswählen</label>
+                  <div className="grid grid-cols-6 gap-2">
+                    {['🔗', '🌐', '📱', '💻', '🎨', '📝', '🎵', '📷', '🎮', '💬', '📧', '📞', '📍', '🏠', '🛒', '📚', '🎭', '🏃', '🍕', '☕', '🎪', '🎨', '🔧', '⚡'].map((icon, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => setNewSocial({ ...newSocial, customIcon: icon })}
+                        className={`w-10 h-10 rounded-lg border-2 text-lg hover:scale-110 transition-transform ${
+                          newSocial.customIcon === icon 
+                            ? 'border-purple-500 bg-purple-50' 
+                            : 'border-gray-300 hover:border-purple-300'
+                        }`}
+                      >
+                        {icon}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+            
+            {(newSocial.platform === 'email' || newSocial.platform === 'phone' || newSocial.platform === 'address') && (
+              <div className="space-y-3">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="text-mode"
+                    name="input-mode"
+                    checked={!newSocial.isUrl}
+                    onChange={() => setNewSocial({ ...newSocial, isUrl: false })}
+                    className="text-purple-600 focus:ring-purple-500"
+                  />
+                  <label htmlFor="text-mode" className="text-sm font-medium text-gray-700">
+                    Text (Infobox wird angezeigt)
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="url-mode"
+                    name="input-mode"
+                    checked={newSocial.isUrl}
+                    onChange={() => setNewSocial({ ...newSocial, isUrl: true })}
+                    className="text-purple-600 focus:ring-purple-500"
+                  />
+                  <label htmlFor="url-mode" className="text-sm font-medium text-gray-700">
+                    URL (Direkter Link)
+                  </label>
+                </div>
+              </div>
+            )}
+            
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">URL</label>
+              <label className="text-sm font-medium text-gray-700">
+                {newSocial.isUrl ? 'URL' : 
+                 newSocial.platform === 'email' ? 'E-Mail Adresse' : 
+                 newSocial.platform === 'phone' ? 'Telefonnummer' : 
+                 newSocial.platform === 'address' ? 'Adresse' : 'URL'}
+              </label>
               <Input
-                placeholder="https://instagram.com/username"
+                placeholder={
+                  newSocial.isUrl ? 'https://...' :
+                  newSocial.platform === 'email' ? 'beispiel@email.com' :
+                  newSocial.platform === 'phone' ? '+49 123 456789' :
+                  newSocial.platform === 'address' ? 'Musterstraße 123, 12345 Stadt' :
+                  'https://instagram.com/username'
+                }
                 value={newSocial.value}
                 onChange={e => setNewSocial({ ...newSocial, value: e.target.value })}
-                type="url"
+                type="text"
                 className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
                 required
               />
@@ -496,34 +637,57 @@ export function SocialsCard({ onSocialChanged }: { onSocialChanged?: () => void 
                   <option value="notion">Notion</option>
                   <option value="medium">Medium</option>
                   <option value="substack">Substack</option>
+                  <option value="clubhouse">Clubhouse</option>
+                  <option value="signal">Signal</option>
+                  <option value="cameo">Cameo</option>
+                  <option value="buymeacoffee">Buy Me a Coffee</option>
+                  <option value="kofi">Ko-fi</option>
                   <option value="patreon">Patreon</option>
                   <option value="onlyfans">OnlyFans</option>
-                  <option value="amazon">Amazon</option>
-                  <option value="etsy">Etsy</option>
-                  <option value="shopify">Shopify</option>
-                  <option value="paypal">PayPal</option>
-                  <option value="cashapp">Cash App</option>
-                  <option value="venmo">Venmo</option>
-                  <option value="bitcoin">Bitcoin</option>
-                  <option value="ethereum">Ethereum</option>
+                  <option value="producthunt">Product Hunt</option>
+                  <option value="appstore">App Store</option>
+                  <option value="googleplay">Google Play</option>
                   <option value="website">Website</option>
-                  <option value="blog">Blog</option>
-                  <option value="portfolio">Portfolio</option>
-                  <option value="resume">Resume</option>
-                  <option value="calendar">Calendar</option>
-                  <option value="email">Email</option>
-                  <option value="phone">Phone</option>
-                  <option value="address">Address</option>
-                  <option value="other">Other</option>
+                  <option value="email">E-Mail</option>
+                  <option value="phone">Telefon</option>
+                  <option value="address">Adresse</option>
+                  <option value="other">Sonstiges</option>
                 </select>
               </div>
+              
+              {editSocial?.platform === 'other' && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Benutzerdefinierte Platform</label>
+                  <Input
+                    placeholder="z.B. Mein Blog, Portfolio, Shop..."
+                    value={editCustomPlatform}
+                    onChange={e => setEditCustomPlatform(e.target.value)}
+                    className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                    required
+                  />
+                </div>
+              )}
+              
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">URL</label>
+                <label className="text-sm font-medium text-gray-700">
+                  {editSocial.platform === 'email' ? 'E-Mail Adresse' : 
+                   editSocial.platform === 'phone' ? 'Telefonnummer' : 
+                   editSocial.platform === 'address' ? 'Adresse' : 'URL'}
+                </label>
                 <Input
-                  placeholder="https://instagram.com/username"
+                  placeholder={
+                    editSocial.platform === 'email' ? 'beispiel@email.com' :
+                    editSocial.platform === 'phone' ? '+49 123 456789' :
+                    editSocial.platform === 'address' ? 'Musterstraße 123, 12345 Stadt' :
+                    'https://instagram.com/username'
+                  }
                   value={editSocial.value}
                   onChange={e => setEditSocial({ ...editSocial, value: e.target.value })}
-                  type="url"
+                  type={
+                    editSocial.platform === 'email' ? 'email' :
+                    editSocial.platform === 'phone' ? 'tel' :
+                    'url'
+                  }
                   className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
                   required
                 />

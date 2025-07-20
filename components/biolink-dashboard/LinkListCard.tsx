@@ -5,8 +5,10 @@ import { useParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
-import { GripVertical, Pencil, Trash, Eye } from 'lucide-react';
+import { GripVertical, Pencil, Trash, Eye, Star, Sparkles, Zap, Heart, Crown } from 'lucide-react';
 import { eventEmitter, EVENTS } from "@/lib/events";
 
 interface Link {
@@ -14,6 +16,8 @@ interface Link {
   title: string;
   url: string;
   position: number;
+  highlight?: boolean;
+  highlightStyle?: string;
   analytics?: { totalClicks?: number };
 }
 
@@ -205,7 +209,7 @@ export function LinkListCard({ reloadLinks, onLinkChanged }: { reloadLinks?: num
             <GripVertical className="w-5 h-5 text-gray-400 cursor-move flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <div className="font-semibold text-gray-900 truncate">{link.title}</div>
-              <div className="text-xs text-gray-500 truncate">{link.url}</div>
+              <div className="text-xs text-gray-500 break-all">{link.url}</div>
             </div>
             <div className="flex items-center gap-3 ml-2">
               <span className="flex items-center text-gray-400 bg-gray-50 px-2 py-1 rounded-lg" title="Aufrufe">
@@ -263,6 +267,61 @@ export function LinkListCard({ reloadLinks, onLinkChanged }: { reloadLinks?: num
                   required
                 />
               </div>
+              
+              <label className="flex items-center gap-3 p-3 rounded-lg hover:bg-purple-50 transition-colors">
+                <Checkbox 
+                  checked={editLink.highlight || false} 
+                  onCheckedChange={v => setEditLink({ ...editLink, highlight: !!v })}
+                  className="border-gray-300 text-purple-600 focus:ring-purple-500"
+                />
+                <span className="text-sm font-medium text-gray-700">Als Highlight markieren</span>
+              </label>
+              
+              {(editLink.highlight || false) && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Highlight-Stil</label>
+                  <Select 
+                    value={editLink.highlightStyle || "star"} 
+                    onValueChange={v => setEditLink({ ...editLink, highlightStyle: v })}
+                  >
+                    <SelectTrigger className="border-gray-300 focus:border-purple-500 focus:ring-purple-500">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border border-gray-200 shadow-lg">
+                      <SelectItem value="star" className="hover:bg-gray-50 cursor-pointer">
+                        <div className="flex items-center gap-2 py-1">
+                          <Star className="w-4 h-4 text-yellow-500" />
+                          <span className="text-gray-900">Stern</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="sparkle" className="hover:bg-gray-50 cursor-pointer">
+                        <div className="flex items-center gap-2 py-1">
+                          <Sparkles className="w-4 h-4 text-purple-500" />
+                          <span className="text-gray-900">Funkeln</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="shake" className="hover:bg-gray-50 cursor-pointer">
+                        <div className="flex items-center gap-2 py-1">
+                          <Zap className="w-4 h-4 text-blue-500" />
+                          <span className="text-gray-900">Wackeln</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="pulse" className="hover:bg-gray-50 cursor-pointer">
+                        <div className="flex items-center gap-2 py-1">
+                          <Heart className="w-4 h-4 text-red-500" />
+                          <span className="text-gray-900">Pulsieren</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="glow" className="hover:bg-gray-50 cursor-pointer">
+                        <div className="flex items-center gap-2 py-1">
+                          <Crown className="w-4 h-4 text-yellow-600" />
+                          <span className="text-gray-900">Leuchten</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               {editError && (
                 <div className="text-red-500 text-sm bg-red-50 p-3 rounded-lg border border-red-200">
                   {editError}

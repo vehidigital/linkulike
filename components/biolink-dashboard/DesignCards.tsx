@@ -8,13 +8,12 @@ import { Switch } from "@/components/ui/switch";
 import { useDesign } from "./DesignContext";
 import { UploadAvatar, UploadBackground } from "./UploadComponents";
 import { themeTemplates, applyThemeToSettings } from "@/lib/theme-templates";
-import { Play } from "lucide-react";
+import { Play, Check, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { X } from "lucide-react";
 import { ColorPicker } from "@/components/ui/color-picker";
 
 
@@ -22,39 +21,329 @@ import { ColorPicker } from "@/components/ui/color-picker";
 // ColorPickerBubble is now replaced with the new ColorPicker component
 
 export function ProfileCard() {
-  const { settings, updateSettings, saveSettings } = useDesign();
+  const { settings, updateSettings, updatePreview, resetPreview, saveSettings } = useDesign();
+  
+  // Local state for editing
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [isEditingBio, setIsEditingBio] = useState(false);
+  const [tempName, setTempName] = useState(settings.displayName || '');
+  const [tempBio, setTempBio] = useState(settings.bio || '');
+  const [originalName, setOriginalName] = useState(settings.displayName || '');
+  const [originalBio, setOriginalBio] = useState(settings.bio || '');
+  
+  // Limits
+  const NAME_LIMIT = 30;
+  const BIO_LIMIT = 150;
   
   const handleUpdate = async (updates: Partial<typeof settings>) => {
+    console.log('🔄 handleUpdate called with:', updates);
     try {
+      console.log('🔄 Calling updateSettings...');
       updateSettings(updates);
-      await saveSettings(); // saveSettings verwendet immer das aktuelle settings-Objekt aus dem Context
+      console.log('🔄 Calling saveSettings...');
+      await saveSettings();
+      console.log('🔄 handleUpdate completed successfully');
     } catch (error) {
-      console.error('Error saving profile settings:', error);
+      console.error('❌ Error saving profile settings:', error);
     }
   };
   
+  const handleNameSave = async () => {
+    console.log('💾 handleNameSave called');
+    console.log('💾 tempName:', tempName);
+    console.log('💾 originalName:', originalName);
+    console.log('💾 Will save?', tempName.trim() && tempName !== originalName);
+    
+    if (tempName.trim() && tempName !== originalName) {
+      console.log('💾 Saving name:', tempName.trim());
+      await handleUpdate({ displayName: tempName.trim() });
+      setOriginalName(tempName.trim());
+      console.log('💾 Name saved, originalName updated to:', tempName.trim());
+    }
+    setIsEditingName(false);
+    console.log('💾 handleNameSave completed');
+  };
+  
+  const handleNameCancel = () => {
+    setTempName(originalName);
+    // Restore original in preview
+    resetPreview();
+    setIsEditingName(false);
+  };
+  
+  const handleBioSave = async () => {
+    console.log('💾 handleBioSave called');
+    console.log('💾 tempBio:', tempBio);
+    console.log('💾 originalBio:', originalBio);
+    console.log('💾 Will save?', tempBio !== originalBio);
+    
+    if (tempBio !== originalBio) {
+      console.log('💾 Saving bio:', tempBio);
+      await handleUpdate({ bio: tempBio });
+      setOriginalBio(tempBio);
+      console.log('💾 Bio saved, originalBio updated to:', tempBio);
+    }
+    setIsEditingBio(false);
+    console.log('💾 handleBioSave completed');
+  };
+  
+  const handleBioCancel = () => {
+    setTempBio(originalBio);
+    // Restore original in preview
+    resetPreview();
+    setIsEditingBio(false);
+  };
+  
+  // Update original values when settings change (e.g., after loading from API)
+  useEffect(() => {
+    console.log('🔄 useEffect triggered');
+    console.log('🔄 settings.displayName:', settings.displayName);
+    console.log('🔄 settings.bio:', settings.bio);
+    console.log('🔄 isEditingName:', isEditingName);
+    console.log('🔄 isEditingBio:', isEditingBio);
+    console.log('🔄 originalName before update:', originalName);
+    console.log('🔄 originalBio before update:', originalBio);
+    
+    // Only update original values if we're not currently editing
+    if (!isEditingName) {
+      setOriginalName(settings.displayName || '');
+      setTempName(settings.displayName || '');
+    }
+    if (!isEditingBio) {
+      setOriginalBio(settings.bio || '');
+      setTempBio(settings.bio || '');
+    }
+    
+    console.log('🔄 useEffect completed');
+  }, [settings.displayName, settings.bio, isEditingName, isEditingBio]);
+  
+  // Live preview during editing - only update state, don't save
+  const handleNameChange = (value: string) => {
+    console.log('🔵 handleNameChange called with:', value);
+    console.log('🔵 Current tempName:', tempName);
+    console.log('🔵 Current originalName:', originalName);
+    setTempName(value);
+    console.log('🔵 Calling updatePreview with displayName:', value);
+    updatePreview({ displayName: value });
+    console.log('🔵 handleNameChange completed');
+  };
+  
+  const handleBioChange = (value: string) => {
+    console.log('🟢 handleBioChange called with:', value);
+    console.log('🟢 Current tempBio:', tempBio);
+    console.log('🟢 Current originalBio:', originalBio);
+    setTempBio(value);
+    console.log('🟢 Calling updatePreview with bio:', value);
+    updatePreview({ bio: value });
+    console.log('🟢 handleBioChange completed');
+  };
+  
   return (
-    <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 flex flex-col gap-4">
-      <div className="text-lg font-bold mb-2">Profile</div>
-      <div className="space-y-2">
-        <label className="block text-sm font-semibold mb-1">Display Name</label>
-        <input
-          className="flex h-10 w-full rounded-xl border border-gray-200 bg-transparent px-4 py-2 text-base shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-400"
-          value={settings.displayName}
-          onChange={e => handleUpdate({ displayName: e.target.value })}
-        />
+    <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8">
+      {/* Header */}
+      <div className="mb-6">
+        <h3 className="text-xl font-bold text-gray-900">Profil</h3>
+        <p className="text-sm text-gray-600">Deine persönlichen Informationen</p>
       </div>
-      <div className="space-y-2">
-        <label className="block text-sm font-semibold mb-1">Bio</label>
-        <input
-          className="flex h-10 w-full rounded-xl border border-gray-200 bg-transparent px-4 py-2 text-base shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-400"
-          value={settings.bio}
-          onChange={e => handleUpdate({ bio: e.target.value })}
-        />
+
+      <div className="space-y-5">
+        {/* Main Content Row */}
+        <div className="flex items-start gap-5">
+          {/* Avatar Section */}
+          <div className="flex-shrink-0">
+            <div className="text-center space-y-3">
+              <Avatar className="w-16 h-16 mx-auto border-2 border-gray-100 shadow-md">
+                <AvatarImage src={settings.avatarImage} />
+                <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-white font-bold text-sm">
+                  {settings.displayName ? settings.displayName.slice(0, 2).toUpperCase() : 'U'}
+                </AvatarFallback>
+              </Avatar>
+              <div className="space-y-2">
+                <UploadAvatar onUploadComplete={(url) => {
+                  console.log('Avatar uploaded:', url);
+                }} />
+              </div>
+            </div>
+          </div>
+
+          {/* Name & Bio */}
+          <div className="flex-1 space-y-3">
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700">
+                Anzeigename <span className="text-red-500">*</span>
+              </label>
+              {isEditingName ? (
+                <div className="space-y-3">
+                  <Input
+                    placeholder="Dein Name"
+                    value={tempName}
+                    onChange={e => handleNameChange(e.target.value)}
+                    maxLength={NAME_LIMIT}
+                    className="h-10 text-sm border-gray-200 focus:border-purple-500 focus:ring-purple-500"
+                    autoFocus
+                  />
+                  <div className="flex justify-between items-center">
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={handleNameSave}
+                        disabled={!tempName.trim() || tempName.trim() === originalName}
+                        className="h-8 px-4 bg-green-600 hover:bg-green-700 text-white font-medium"
+                      >
+                        <Check className="w-4 h-4 mr-1" />
+                        Speichern
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleNameCancel}
+                        className="h-8 px-4 border-gray-300 hover:bg-gray-50"
+                      >
+                        <X className="w-4 h-4 mr-1" />
+                        Abbrechen
+                      </Button>
+                    </div>
+                    <span className={`text-xs font-medium ${tempName.length > NAME_LIMIT * 0.8 ? 'text-orange-500' : 'text-gray-400'}`}>
+                      {tempName.length}/{NAME_LIMIT}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div 
+                  className="h-10 px-3 py-2 text-sm border border-gray-200 rounded-md bg-white cursor-pointer hover:border-purple-300 hover:bg-purple-50 transition-all duration-200 flex items-center justify-between group"
+                  onClick={() => setIsEditingName(true)}
+                >
+                  <span className={settings.displayName ? 'text-gray-900' : 'text-gray-500'}>
+                    {settings.displayName || 'Dein Name'}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-400">{settings.displayName?.length || 0}/{NAME_LIMIT}</span>
+                    <div className="w-4 h-4 text-gray-400 group-hover:text-purple-500 transition-colors">
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700">
+                Bio <span className="text-gray-400">(optional)</span>
+              </label>
+              {isEditingBio ? (
+                <div className="space-y-3">
+                  <textarea
+                    placeholder="Erzähle etwas über dich..."
+                    value={tempBio}
+                    onChange={e => handleBioChange(e.target.value)}
+                    maxLength={BIO_LIMIT}
+                    className="w-full h-20 rounded-md border border-gray-200 bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 resize-none"
+                    autoFocus
+                  />
+                  <div className="flex justify-between items-center">
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={handleBioSave}
+                        disabled={tempBio === originalBio}
+                        className="h-8 px-4 bg-green-600 hover:bg-green-700 text-white font-medium"
+                      >
+                        <Check className="w-4 h-4 mr-1" />
+                        Speichern
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleBioCancel}
+                        className="h-8 px-4 border-gray-300 hover:bg-gray-50"
+                      >
+                        <X className="w-4 h-4 mr-1" />
+                        Abbrechen
+                      </Button>
+                    </div>
+                    <span className={`text-xs font-medium ${tempBio.length > BIO_LIMIT * 0.8 ? 'text-orange-500' : 'text-gray-400'}`}>
+                      {tempBio.length}/{BIO_LIMIT}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div 
+                  className="min-h-[48px] px-3 py-2 text-sm border border-gray-200 rounded-md bg-white cursor-pointer hover:border-purple-300 hover:bg-purple-50 transition-all duration-200 flex items-start justify-between group"
+                  onClick={() => setIsEditingBio(true)}
+                >
+                  <span className={settings.bio ? 'text-gray-900' : 'text-gray-500'}>
+                    {settings.bio || 'Erzähle etwas über dich...'}
+                  </span>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-xs text-gray-400">{settings.bio?.length || 0}/{BIO_LIMIT}</span>
+                    <div className="w-4 h-4 text-gray-400 group-hover:text-purple-500 transition-colors">
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Avatar Customization */}
+        <div className="pt-3 border-t border-gray-100">
+          <div className="grid grid-cols-2 gap-4">
+            {/* Avatar Shape */}
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700">Form</label>
+              <RadioGroup 
+                value={settings.avatarShape || 'circle'} 
+                onValueChange={(value) => handleUpdate({ avatarShape: value as 'circle' | 'rectangle' })}
+                className="flex gap-3"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="circle" id="circle" className="text-purple-600" />
+                  <Label htmlFor="circle" className="text-sm">Kreis</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="rectangle" id="rectangle" className="text-purple-600" />
+                  <Label htmlFor="rectangle" className="text-sm">Rechteck</Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            {/* Border Color */}
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700">Randfarbe</label>
+              <div className="flex items-center gap-2">
+                <div className="grid grid-cols-8 gap-1">
+                  {['#ffffff', '#000000', '#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'].map((color) => (
+                    <button
+                      key={color}
+                      onClick={() => handleUpdate({ avatarBorderColor: color })}
+                      className={`w-6 h-6 rounded-full border-2 transition-all ${
+                        settings.avatarBorderColor === color 
+                          ? 'border-gray-400 scale-110' 
+                          : 'border-gray-200 hover:scale-105'
+                      }`}
+                      style={{ backgroundColor: color }}
+                      title={color}
+                    />
+                  ))}
+                </div>
+                <ColorPicker
+                  value={settings.avatarBorderColor || '#ffffff'}
+                  onChange={(color) => handleUpdate({ avatarBorderColor: color })}
+                  size="sm"
+                  variant="bubble"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+
       </div>
-      <UploadAvatar onUploadComplete={(url) => {
-        console.log('Avatar uploaded:', url);
-      }} />
     </div>
   );
 }

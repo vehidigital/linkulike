@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { platform, url } = body
+    const { platform, url, customPlatform } = body
 
     if (!platform || !url) {
       return NextResponse.json(
@@ -98,6 +98,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    // Use custom platform name if provided
+    const finalPlatform = platform === 'other' && customPlatform ? customPlatform : platform;
 
     // Get current max position
     const maxPosition = await prisma.social.aggregate({
@@ -111,7 +114,7 @@ export async function POST(request: NextRequest) {
     const newSocial = await prisma.social.create({
       data: {
         userId: user.id,
-        platform,
+        platform: finalPlatform,
         value: url, // Use 'value' field as per Prisma schema
         position: newPosition,
       },

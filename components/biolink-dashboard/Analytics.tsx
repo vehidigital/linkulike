@@ -234,7 +234,7 @@ export function Analytics() {
                   </div>
                   <div>
                     <div className="font-medium">{link.title}</div>
-                    <div className="text-sm text-gray-500 truncate max-w-xs">{link.url}</div>
+                    <div className="text-sm text-gray-500 break-all max-w-xs">{link.url}</div>
                   </div>
                 </div>
                 <div className="text-right">

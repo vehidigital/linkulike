@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Upload } from "lucide-react";
 import { getThemeTemplate } from "@/lib/theme-templates";
 import { getContrastColor } from "@/lib/color-utils";
-import { Share2, Instagram, Youtube, Facebook, Twitter, Linkedin, Github, Link as LinkIcon } from "lucide-react";
+import { socialPlatforms } from "@/lib/social-icons";
+import { Share2, Instagram, Youtube, Facebook, Twitter, Linkedin, Github, Link as LinkIcon, Music, MessageCircle, Twitch, Apple, ShoppingBag, BookOpen, Figma, Dribbble, Mail, Club, Signal, Camera, Coffee, Gift, Globe, Phone, MapPin } from "lucide-react";
 import { Star, Sparkles, Zap, Heart, Crown } from "lucide-react";
 import { useParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
@@ -273,6 +274,37 @@ export function LivePreview({ reloadLinks, reloadSocials, isCompact = false }: {
     twitter: Twitter,
     linkedin: Linkedin,
     github: Github,
+    tiktok: Music,
+    snapchat: MessageCircle,
+    twitch: Twitch,
+    discord: MessageCircle,
+    telegram: MessageCircle,
+    whatsapp: MessageCircle,
+    spotify: Music,
+    apple: Apple,
+    soundcloud: Music,
+    pinterest: ShoppingBag,
+    reddit: BookOpen,
+    behance: Figma,
+    dribbble: Dribbble,
+    figma: Figma,
+    notion: BookOpen,
+    medium: BookOpen,
+    substack: Mail,
+    clubhouse: Club,
+    signal: Signal,
+    cameo: Camera,
+    buymeacoffee: Coffee,
+    kofi: Coffee,
+    patreon: Gift,
+    onlyfans: Heart,
+    producthunt: ShoppingBag,
+    appstore: Apple,
+    googleplay: ShoppingBag,
+    website: Globe,
+    email: Mail,
+    phone: Phone,
+    address: MapPin,
   };
 
   // Get Social Icon
@@ -295,7 +327,7 @@ export function LivePreview({ reloadLinks, reloadSocials, isCompact = false }: {
     const baseClasses = "ring-2";
     const styleClasses = {
       star: "ring-yellow-400",
-      sparkle: "ring-purple-400 animate-pulse",
+      sparkle: "ring-purple-400",
       shake: "ring-blue-400 animate-bounce",
       pulse: "ring-red-400 animate-pulse",
       glow: "ring-yellow-500 shadow-lg shadow-yellow-500/50",
@@ -303,17 +335,177 @@ export function LivePreview({ reloadLinks, reloadSocials, isCompact = false }: {
     return `${baseClasses} ${styleClasses[style as keyof typeof styleClasses] || styleClasses.star}`;
   }
 
-  // Social-Icons-Element (max. 5 pro Zeile, automatische Zeilen)
+  // State für Infoboxen
+  const [infoBox, setInfoBox] = useState<{ type: string; content: string; x: number; y: number } | null>(null);
+
+  // Social-Icons-Element (intelligente symmetrische Verteilung)
   const SocialIconsBar = socials.length > 0 ? (
-    <div className="flex flex-wrap justify-center gap-3 max-w-xs">
-      {socials.slice(0, 10).map(s => {
-        const Icon = socialIcons[s.platform as keyof typeof socialIcons] || LinkIcon;
+    <div className="max-w-xs mx-auto relative">
+      {(() => {
+        const totalIcons = socials.length;
+        
+        // Intelligente Verteilung für perfekte Symmetrie
+        let firstRowCount, secondRowCount;
+        
+        if (totalIcons <= 3) {
+          // 1-3 Icons: Alle in eine Reihe
+          firstRowCount = totalIcons;
+          secondRowCount = 0;
+        } else if (totalIcons === 4) {
+          // 4 Icons: 2+2
+          firstRowCount = 2;
+          secondRowCount = 2;
+        } else if (totalIcons === 5) {
+          // 5 Icons: 3+2
+          firstRowCount = 3;
+          secondRowCount = 2;
+        } else if (totalIcons === 6) {
+          // 6 Icons: 3+3
+          firstRowCount = 3;
+          secondRowCount = 3;
+        } else if (totalIcons === 7) {
+          // 7 Icons: 4+3 (symmetrischer als 3+3+1)
+          firstRowCount = 4;
+          secondRowCount = 3;
+        } else {
+          // 8+ Icons: 4+4
+          firstRowCount = 4;
+          secondRowCount = Math.min(4, totalIcons - 4);
+        }
+        
+        const renderIcon = (s: any, index: number) => {
+          const isContactInfo = ['email', 'phone', 'address'].includes(s.platform);
+          
+          if (isContactInfo) {
+            // Verwende das isUrl Flag aus der Datenbank
+            const isUrl = s.isUrl || s.value.startsWith('http://') || s.value.startsWith('https://') || s.value.startsWith('mailto:') || s.value.startsWith('tel:');
+            
+            if (isUrl) {
+              // URL: Direkter Link
+              const getContactIcon = () => {
+                switch (s.platform) {
+                  case 'email': return '📧';
+                  case 'phone': return '📞';
+                  case 'address': return '📍';
+                  default: return '🔗';
+                }
+              };
+              
+              return (
+                <a
+                  key={s.id}
+                  href={s.value}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-lg flex items-center justify-center hover:scale-110 transition-transform duration-200 w-10 h-10"
+                  title={s.platform}
+                >
+                  <span className="text-lg">{getContactIcon()}</span>
+                </a>
+              );
+            } else {
+              // Text: Infobox öffnen
+              const handleClick = (e: React.MouseEvent) => {
+                e.preventDefault();
+                const rect = e.currentTarget.getBoundingClientRect();
+                setInfoBox({
+                  type: s.platform,
+                  content: s.value,
+                  x: rect.left + rect.width / 2,
+                  y: rect.top - 10
+                });
+              };
+              
+              const getContactIcon = () => {
+                switch (s.platform) {
+                  case 'email': return '📧';
+                  case 'phone': return '📞';
+                  case 'address': return '📍';
+                  default: return '🔗';
+                }
+              };
+              
+              return (
+                <button
+                  key={s.id}
+                  onClick={handleClick}
+                  className="bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-lg flex items-center justify-center hover:scale-110 transition-transform duration-200 w-10 h-10"
+                  title={s.platform}
+                >
+                  <span className="text-lg">{getContactIcon()}</span>
+                </button>
+              );
+            }
+          }
+          
+          // Normale Social Media Links
+          const socialPlatform = socialPlatforms.find(sp => sp.value === s.platform);
+          if (socialPlatform && socialPlatform.icon.startsWith('<svg')) {
+            return (
+              <a key={s.id} href={s.value} target="_blank" rel="noopener noreferrer" className="bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-lg flex items-center justify-center hover:scale-110 transition-transform duration-200 w-10 h-10" title={s.platform}>
+                <div 
+                  className="w-5 h-5"
+                  style={{ color: socialPlatform.color }}
+                  dangerouslySetInnerHTML={{ __html: socialPlatform.icon }}
+                />
+              </a>
+            );
+          }
+          
+          const Icon = socialIcons[s.platform as keyof typeof socialIcons] || LinkIcon;
+          return (
+            <a key={s.id} href={s.value} target="_blank" rel="noopener noreferrer" className="bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-lg flex items-center justify-center hover:scale-110 transition-transform duration-200 w-10 h-10" title={s.platform}>
+              <Icon className="w-5 h-5" />
+            </a>
+          );
+        };
+        
         return (
-          <a key={s.id} href={s.value} target="_blank" rel="noopener noreferrer" className="bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-lg flex items-center justify-center hover:scale-110 transition-transform duration-200" title={s.platform}>
-            <Icon className="w-5 h-5" />
-          </a>
+          <>
+            {/* First row */}
+            <div className="flex justify-center gap-3 mb-3" style={{ maxWidth: 'fit-content', margin: '0 auto' }}>
+              {socials.slice(0, firstRowCount).map((s, index) => renderIcon(s, index))}
+            </div>
+            
+            {/* Second row (if needed) */}
+            {secondRowCount > 0 && (
+              <div className="flex justify-center gap-3" style={{ maxWidth: 'fit-content', margin: '0 auto' }}>
+                {socials.slice(firstRowCount, firstRowCount + secondRowCount).map((s, index) => renderIcon(s, firstRowCount + index))}
+              </div>
+            )}
+            
+            {/* InfoBox */}
+            {infoBox && (
+              <div 
+                className="absolute z-50 bg-white/95 backdrop-blur-md rounded-lg shadow-xl border border-gray-200/50 p-3 max-w-xs"
+                style={{
+                  left: `${infoBox.x}px`,
+                  top: `${infoBox.y}px`,
+                  transform: 'translateX(-50%) translateY(-100%)'
+                }}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-lg">
+                    {infoBox.type === 'email' ? '📧' : 
+                     infoBox.type === 'phone' ? '📞' : '📍'}
+                  </span>
+                  <span className="font-semibold text-sm capitalize">
+                    {infoBox.type === 'email' ? 'E-Mail' : 
+                     infoBox.type === 'phone' ? 'Telefon' : 'Adresse'}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-700 break-words">{infoBox.content}</p>
+                <button
+                  onClick={() => setInfoBox(null)}
+                  className="absolute top-1 right-1 text-gray-400 hover:text-gray-600"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+          </>
         );
-      })}
+      })()}
     </div>
   ) : null;
 
@@ -321,10 +513,10 @@ export function LivePreview({ reloadLinks, reloadSocials, isCompact = false }: {
   if (isCompact) {
     return (
       <div className="w-full h-full flex flex-col items-center justify-between overflow-hidden" style={getBackgroundStyle()}>
-        <div className="flex flex-col items-center w-full px-4 pt-4 pb-2 flex-1">
+        <div className="flex flex-col items-center w-full px-4 pt-8 pb-2 flex-1">
           {/* Socials oben - vor dem Avatar */}
           {settings.socialPosition === 'top' && (
-            <div className="mb-4">
+            <div className="mb-6">
               {SocialIconsBar}
             </div>
           )}
@@ -338,16 +530,16 @@ export function LivePreview({ reloadLinks, reloadSocials, isCompact = false }: {
           }}>
             <AvatarImage src={userData?.avatarUrl || settings.avatarImage} />
             <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-white font-bold text-sm">
-              {userData?.displayName ? userData.displayName.slice(0, 2).toUpperCase() : 'U'}
+              {(settings.displayName || userData?.displayName) ? (settings.displayName || userData?.displayName)?.slice(0, 2).toUpperCase() : 'U'}
             </AvatarFallback>
           </Avatar>
           
           <h1 className="text-lg font-bold mb-1 text-center" style={{ fontFamily: getFontFamily(), color: getTextColor() }}>
-            {userData?.displayName || settings.displayName || 'Dein Name'}
+            {settings.displayName || userData?.displayName || 'Dein Name'}
           </h1>
           
           <p className="text-xs mb-3 text-center opacity-90" style={{ fontFamily: getFontFamily(), color: getTextColor() }}>
-            {userData?.bio || settings.bio || 'Deine Bio'}
+            {settings.bio || userData?.bio || 'Deine Bio'}
           </p>
           
           {/* Socials in der Mitte - nach der Bio */}
@@ -441,10 +633,10 @@ export function LivePreview({ reloadLinks, reloadSocials, isCompact = false }: {
           
           {/* Phone-Display-Inhalt */}
           <div className="flex-1 flex flex-col items-center justify-between w-full h-full relative" style={getBackgroundStyle()}>
-            <div className="flex flex-col items-center w-full px-6 pt-6 pb-4 flex-1">
+            <div className="flex flex-col items-center w-full px-6 pt-12 pb-4 flex-1">
               {/* Socials oben - vor dem Avatar */}
               {settings.socialPosition === 'top' && (
-                <div className="mb-4">
+                <div className="mb-6">
                   {SocialIconsBar}
                 </div>
               )}
@@ -458,16 +650,16 @@ export function LivePreview({ reloadLinks, reloadSocials, isCompact = false }: {
               }}>
                 <AvatarImage src={userData?.avatarUrl || settings.avatarImage} />
                 <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-white font-bold">
-                  {userData?.displayName ? userData.displayName.slice(0, 2).toUpperCase() : 'U'}
+                  {(settings.displayName || userData?.displayName) ? (settings.displayName || userData?.displayName)?.slice(0, 2).toUpperCase() : 'U'}
                 </AvatarFallback>
               </Avatar>
               
               <h1 className="text-xl font-bold mb-2 text-center" style={{ fontFamily: getFontFamily(), color: getTextColor() }}>
-                {userData?.displayName || settings.displayName || 'Dein Name'}
+                {settings.displayName || userData?.displayName || 'Dein Name'}
               </h1>
               
               <p className="text-sm mb-4 text-center opacity-90" style={{ fontFamily: getFontFamily(), color: getTextColor() }}>
-                {userData?.bio || settings.bio || 'Deine Bio'}
+                {settings.bio || userData?.bio || 'Deine Bio'}
               </p>
               
               {/* Socials in der Mitte - nach der Bio */}

@@ -743,86 +743,13 @@ export function UploadAvatar({ onUploadComplete }: UploadAvatarProps) {
           
           <div className="flex-1">
             <h3 className="text-sm font-medium text-gray-900 mb-1">Avatar</h3>
-            <p className="text-xs text-gray-500 mb-3">
+            <p className="text-xs text-gray-500">
               {settings.avatarImage ? 'Dein aktuelles Profilbild' : 'Lade dein Profilbild hoch'}
             </p>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => (document.querySelector('input[type="file"]') as HTMLInputElement)?.click()}
-              disabled={uploadStatus.isActive}
-              className="w-full"
-            >
-              {uploadStatus.isActive ? (
-                <>
-                  {uploadStatus.icon}
-                  {uploadStatus.message}
-                </>
-              ) : (
-                settings.avatarImage ? 'Foto ändern' : 'Foto hochladen'
-              )}
-            </Button>
           </div>
         </div>
 
-        {/* Avatar Customization Section - Always show */}
-        <div className="space-y-4 p-4 bg-gray-50 rounded-lg border">
-          <h4 className="text-sm font-medium text-gray-900 mb-3">Anpassung</h4>
-          
-          {/* Shape Selection */}
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-gray-700">Form</label>
-            <div className="flex gap-2">
-              <Button
-                variant={settings.avatarShape === 'circle' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => handleAvatarShapeChange('circle')}
-                className="flex-1"
-                disabled={uploadStatus.isActive}
-              >
-                <div className="w-4 h-4 rounded-full bg-current mr-2" />
-                Kreis
-              </Button>
-              <Button
-                variant={settings.avatarShape === 'rectangle' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => handleAvatarShapeChange('rectangle')}
-                className="flex-1"
-                disabled={uploadStatus.isActive}
-              >
-                <div className="w-4 h-4 rounded bg-current mr-2" />
-                Rechteck
-              </Button>
-            </div>
-          </div>
 
-          {/* Border Color Selection */}
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-gray-700">Randfarbe</label>
-            <div className="flex gap-1 flex-wrap">
-              {['#ffffff', '#000000', '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4'].map((color) => (
-                <button
-                  key={color}
-                  onClick={() => handleAvatarBorderColorChange(color)}
-                  className={`w-8 h-8 rounded-full border-2 transition-all ${
-                    settings.avatarBorderColor === color ? 'border-gray-800 scale-110' : 'border-gray-300 hover:scale-105'
-                  }`}
-                  style={{ backgroundColor: color }}
-                  disabled={uploadStatus.isActive}
-                  title={`Randfarbe: ${color}`}
-                />
-              ))}
-              {/* Custom Color Picker as a color option */}
-              <ColorPicker 
-                value={settings.avatarBorderColor || '#ffffff'} 
-                onChange={handleAvatarBorderColorChange}
-                variant="bubble"
-                size="sm"
-              />
-            </div>
-          </div>
-        </div>
 
         {/* Action Buttons - Only show if avatar exists */}
         {settings.avatarImage && (

@@ -37,6 +37,8 @@ interface DesignSettings {
 interface DesignContextType {
   settings: DesignSettings
   updateSettings: (updates: Partial<DesignSettings>) => void
+  updatePreview: (updates: Partial<DesignSettings>) => void
+  resetPreview: () => void
   isLoading: boolean
   saveSettings: () => Promise<void>
 }
@@ -77,7 +79,8 @@ const DesignContext = createContext<DesignContextType | undefined>(undefined)
 export function DesignProvider({ children }: { children: ReactNode }) {
   const params = useParams();
   const userId = params.userId as string;
-  const [settings, setSettings] = useState<DesignSettings>(defaultSettings)
+  const [previewSettings, setPreviewSettings] = useState<DesignSettings>(defaultSettings)
+  const [savedSettings, setSavedSettings] = useState<DesignSettings>(defaultSettings)
   const [isLoading, setIsLoading] = useState(true)
   const [isInitialized, setIsInitialized] = useState(false)
 
@@ -96,13 +99,15 @@ export function DesignProvider({ children }: { children: ReactNode }) {
         console.log('Loaded design settings from API:', data);
         // Ensure isCustomTheme is properly set based on selectedTheme
         const isCustomTheme = data.selectedTheme === 'create-your-own'
-        setSettings(prev => ({ 
-          ...prev, 
+        const loadedSettings = { 
+          ...defaultSettings, 
           ...data,
           isCustomTheme: isCustomTheme,
           useCustomButtonTextColor: !!data.useCustomButtonTextColor, // Fix: immer Boolean
           showBranding: (data.showBranding === undefined || data.showBranding === null) ? true : data.showBranding // Fallback: immer true, außer explizit false
-        }))
+        };
+        setPreviewSettings(loadedSettings);
+        setSavedSettings(loadedSettings);
         setIsInitialized(true)
       } else {
         // If API fails, still mark as initialized to prevent showing loading forever
@@ -118,7 +123,11 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   }
 
   const updateSettings = (updates: Partial<DesignSettings>) => {
-    setSettings(prev => {
+    console.log('💾 updateSettings called with:', updates);
+    console.log('💾 Current previewSettings before update:', previewSettings);
+    console.log('💾 Current savedSettings before update:', savedSettings);
+    
+    setPreviewSettings(prev => {
       const newSettings = { ...prev, ...updates }
       
       // Ensure isCustomTheme is properly set when selectedTheme changes
@@ -126,20 +135,52 @@ export function DesignProvider({ children }: { children: ReactNode }) {
         newSettings.isCustomTheme = updates.selectedTheme === 'create-your-own'
       }
       
+      console.log('💾 New previewSettings after update:', newSettings);
+      return newSettings
+    })
+    
+    // Also update saved settings
+    setSavedSettings(prev => {
+      const newSettings = { ...prev, ...updates }
+      
+      // Ensure isCustomTheme is properly set when selectedTheme changes
+      if (updates.selectedTheme) {
+        newSettings.isCustomTheme = updates.selectedTheme === 'create-your-own'
+      }
+      
+      console.log('💾 New savedSettings after update:', newSettings);
+      return newSettings
+    })
+  }
+
+  const updatePreview = (updates: Partial<DesignSettings>) => {
+    console.log('👁️ updatePreview called with:', updates);
+    console.log('👁️ Current previewSettings before update:', previewSettings);
+    
+    // Only update the preview state, don't update saved settings
+    setPreviewSettings(prev => {
+      const newSettings = { ...prev, ...updates }
+      
+      // Ensure isCustomTheme is properly set when selectedTheme changes
+      if (updates.selectedTheme) {
+        newSettings.isCustomTheme = updates.selectedTheme === 'create-your-own'
+      }
+      
+      console.log('👁️ New previewSettings after update:', newSettings);
       return newSettings
     })
   }
 
   const saveSettings = async () => {
     try {
-      console.log('saveSettings called with settings:', settings);
+      console.log('saveSettings called with savedSettings:', savedSettings);
       const url = `/api/user/design?userId=${userId}`;
       const response = await fetch(url, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(settings),
+        body: JSON.stringify(savedSettings),
       })
 
       if (!response.ok) {
@@ -157,6 +198,17 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const resetPreview = () => {
+    console.log('🔄 resetPreview called');
+    console.log('🔄 Current previewSettings:', previewSettings);
+    console.log('🔄 Saved settings to restore:', savedSettings);
+    
+    // Reset preview to saved settings
+    setPreviewSettings(savedSettings);
+    
+    console.log('🔄 resetPreview completed');
+  }
+
   // Don't render children until we've at least attempted to load settings
   if (!isInitialized) {
     return (
@@ -167,7 +219,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <DesignContext.Provider value={{ settings, updateSettings, isLoading, saveSettings }}>
+    <DesignContext.Provider value={{ settings: previewSettings, updateSettings, updatePreview, resetPreview, isLoading, saveSettings }}>
       {children}
     </DesignContext.Provider>
   )

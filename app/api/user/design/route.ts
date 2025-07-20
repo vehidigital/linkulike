@@ -129,6 +129,7 @@ export async function PUT(request: NextRequest) {
     
     console.log('=== DESIGN API PUT CALLED ===')
     console.log('USERID (PUT):', userId)
+    console.log('REQUEST URL:', request.url)
     
     let user = null;
     
@@ -171,6 +172,8 @@ export async function PUT(request: NextRequest) {
     
     const body = await request.json()
     console.log('BODY (PUT):', body)
+    console.log('BODY displayName:', body.displayName)
+    console.log('BODY bio:', body.bio)
     
     const {
       displayName,
@@ -234,6 +237,8 @@ export async function PUT(request: NextRequest) {
 
     console.log('Updating user with data:', updateData)
     console.log('Avatar border color being saved:', avatarBorderColor)
+    console.log('displayName being saved:', updateData.displayName)
+    console.log('bio being saved:', updateData.bio)
 
     try {
       // Update user with new design settings
@@ -244,6 +249,8 @@ export async function PUT(request: NextRequest) {
 
       console.log('User updated successfully:', updatedUser.id)
       console.log('Updated avatar border color in database:', updatedUser.avatarBorderColor)
+      console.log('Updated displayName in database:', updatedUser.displayName)
+      console.log('Updated bio in database:', updatedUser.bio)
       return NextResponse.json({ success: true, user: updatedUser })
     } catch (dbError) {
       console.error('Database update error:', dbError)
