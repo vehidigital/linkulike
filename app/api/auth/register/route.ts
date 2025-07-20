@@ -1,126 +1,64 @@
-import { NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/db"
-import bcrypt from "bcryptjs"
-import { randomBytes } from "crypto"
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
+import { sendOtpMail } from "@/lib/postmark";
+import bcrypt from "bcryptjs";
+import { withRateLimit, authRateLimiter } from "@/lib/rate-limit";
 
-export async function POST(request: NextRequest) {
+function generateOtp() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+export async function POST(req: NextRequest) {
   try {
-    const body = await request.json()
-    console.log('Register-API: Request-Body', body)
-    const { email, password, username } = body
+    // Rate limiting
+    const rateLimit = await withRateLimit(req, authRateLimiter);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Too many registration attempts. Please try again later." },
+        { status: 429 }
+      );
+    }
 
-    // Validation
+    const { email, password, username } = await req.json();
+    console.log('[REGISTER] Request body:', { email, password, username });
     if (!email || !password || !username) {
-      return NextResponse.json(
-        { error: "Email, password, and username are required" },
-        { status: 400 }
-      )
+      console.log('[REGISTER] Missing fields');
+      return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
-
-    if (password.length < 6) {
-      return NextResponse.json(
-        { error: "Password must be at least 6 characters long" },
-        { status: 400 }
-      )
+    const existing = await prisma.user.findFirst({ where: { OR: [{ email: email.toLowerCase() }, { username: username.toLowerCase() }] } });
+    console.log('[REGISTER] Existing user:', existing);
+    if (existing) {
+      console.log('[REGISTER] User or username already exists');
+      return NextResponse.json({ error: "User or username already exists" }, { status: 409 });
     }
-
-    // Check if user already exists
-    const existingUser = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { email: email.toLowerCase() },
-          { username: username.toLowerCase() },
-        ],
-      },
-    })
-
-    if (existingUser) {
-      if (existingUser.email === email.toLowerCase()) {
-        return NextResponse.json(
-          { error: "Email already registered" },
-          { status: 400 }
-        )
-      } else {
-        return NextResponse.json(
-          { error: "Username already taken" },
-          { status: 400 }
-        )
-      }
+    const hashed = await bcrypt.hash(password, 10);
+    const otp = generateOtp();
+    let user = null;
+    try {
+      user = await prisma.user.create({
+        data: {
+          email: email.toLowerCase(),
+          password: hashed,
+          username: username.toLowerCase(),
+          otp,
+          otpExpires: new Date(Date.now() + 30 * 60 * 1000),
+          isVerified: false,
+        },
+      });
+      console.log('[REGISTER] User created:', user);
+    } catch (err) {
+      console.error('[REGISTER] Error creating user:', err);
+      return NextResponse.json({ error: 'Error creating user', details: err instanceof Error ? err.message : err }, { status: 500 });
     }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 12)
-
-    // Create user
-    const user = await prisma.user.create({
-      data: {
-        email: email.toLowerCase(),
-        password: hashedPassword,
-        username: username.toLowerCase(),
-        displayName: username,
-      },
-      select: {
-        id: true,
-        email: true,
-        username: true,
-        displayName: true,
-        createdAt: true,
-      },
-    })
-    console.log('Register-API: User created', user)
-
-    // E-Mail-Verifizierung anlegen
-    const emailToken = randomBytes(32).toString('hex')
-    const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24) // 24h gültig
-    await prisma.emailVerification.create({
-      data: {
-        userId: user.id,
-        token: emailToken,
-        expiresAt,
-        status: 'pending',
-      }
-    })
-
-    // Consent für Datenschutz/AGB anlegen
-    await prisma.consent.create({
-      data: {
-        userId: user.id,
-        type: 'privacy',
-        acceptedAt: new Date(),
-        version: '1.0',
-      }
-    })
-    await prisma.consent.create({
-      data: {
-        userId: user.id,
-        type: 'terms',
-        acceptedAt: new Date(),
-        version: '1.0',
-      }
-    })
-
-    // OptIn für Systemmails (Beispiel)
-    await prisma.optIn.create({
-      data: {
-        userId: user.id,
-        type: 'system',
-        status: 'subscribed',
-        timestamp: new Date(),
-      }
-    })
-
-    return NextResponse.json(
-      { 
-        message: "User created successfully",
-        user 
-      },
-      { status: 201 }
-    )
+    try {
+      await sendOtpMail({ to: user.email, code: otp });
+      console.log('[REGISTER] OTP mail sent');
+    } catch (err) {
+      console.error('[REGISTER] Error sending OTP mail:', err);
+    }
+    return NextResponse.json({ success: true, userId: user.id });
   } catch (error) {
-    console.error("Registration error:", error)
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    )
+    console.error('[REGISTER] General error:', error);
+    return NextResponse.json({ error: 'Internal server error', details: error instanceof Error ? error.message : error }, { status: 500 });
   }
 } 

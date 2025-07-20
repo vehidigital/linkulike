@@ -13,7 +13,9 @@ const Avatar = React.forwardRef<
   <AvatarPrimitive.Root
     ref={ref}
     className={cn(
-      "relative flex items-center justify-center h-10 w-10 shrink-0 overflow-hidden rounded-full bg-gray-100 border",
+      "relative flex items-center justify-center h-10 w-10 shrink-0 overflow-hidden bg-gray-100 border",
+      // Default to rounded-full, but allow override via className
+      !className?.includes('rounded-') && "rounded-full",
       className
     )}
     {...props}
@@ -62,7 +64,7 @@ const AvatarImage = React.forwardRef<
         loading="lazy"
         width={size}
         height={size}
-        className="absolute inset-0 w-full h-full object-cover rounded-full"
+        className="absolute inset-0 w-full h-full object-cover"
         src={src}
         onError={handleImageError}
         onLoad={handleImageLoad}
@@ -80,7 +82,9 @@ const AvatarFallback = React.forwardRef<
   <AvatarPrimitive.Fallback
     ref={ref}
     className={cn(
-      "flex h-full w-full items-center justify-center rounded-full bg-muted select-none",
+      "flex h-full w-full items-center justify-center bg-muted select-none",
+      // Default to rounded-full, but allow override via className
+      !className?.includes('rounded-') && "rounded-full",
       className
     )}
     {...props}

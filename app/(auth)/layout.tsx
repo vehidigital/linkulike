@@ -1,16 +1,12 @@
-import AuthHeader from "@/components/navigation/auth-header"
-import { Footer } from "@/components/navigation/footer"
-import { getTranslations } from "@/lib/i18n"
-import { getLangFromHost } from "@/lib/server-utils"
+import { PublicNav } from "@/components/biolink-dashboard/PublicNav";
+import { PublicFooter } from "@/components/biolink-dashboard/PublicFooter";
 
-export default async function AuthLayout({ children }: { children: React.ReactNode }) {
-  const lang = await getLangFromHost()
-  const t = getTranslations(lang)
+export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 to-indigo-100" style={{ fontFamily: 'Inter, sans-serif' }}>
-      <AuthHeader lang={lang} />
-      <main className="flex-1 flex items-center justify-center">{children}</main>
-      <Footer lang={lang} t={t} />
+    <div className="min-h-screen flex flex-col bg-gray-50">
+      <PublicNav />
+      <main className="flex-1 flex flex-col items-center justify-center">{children}</main>
+      <PublicFooter />
     </div>
-  )
+  );
 } 

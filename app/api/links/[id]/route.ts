@@ -20,17 +20,33 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('userId');
     
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const session = await getServerSession(authOptions);
+    console.log('[LINKS-GET] Session:', session);
+    console.log('[LINKS-GET] UserId from params:', userId);
+    
+    let user = null;
+    
+    // Try to get user from session first
+    if (session?.user?.email) {
+      user = await prisma.user.findUnique({
+        where: { email: session.user.email },
+      });
+      console.log('[LINKS-GET] User found via session:', !!user, user?.email);
+    }
+    
+    // If no user from session, try userId from params
+    if (!user && userId) {
+      user = await prisma.user.findUnique({
+        where: { id: userId },
+      });
+      console.log('[LINKS-GET] User found via userId:', !!user, user?.id);
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    })
-
     if (!user) {
+      console.log('[LINKS-GET] No user found');
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
@@ -64,17 +80,33 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('userId');
     
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const session = await getServerSession(authOptions);
+    console.log('[LINKS-DELETE] Session:', session);
+    console.log('[LINKS-DELETE] UserId from params:', userId);
+    
+    let user = null;
+    
+    // Try to get user from session first
+    if (session?.user?.email) {
+      user = await prisma.user.findUnique({
+        where: { email: session.user.email },
+      });
+      console.log('[LINKS-DELETE] User found via session:', !!user, user?.email);
+    }
+    
+    // If no user from session, try userId from params
+    if (!user && userId) {
+      user = await prisma.user.findUnique({
+        where: { id: userId },
+      });
+      console.log('[LINKS-DELETE] User found via userId:', !!user, user?.id);
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    })
-
     if (!user) {
+      console.log('[LINKS-DELETE] No user found');
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
@@ -111,17 +143,33 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('userId');
     
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const session = await getServerSession(authOptions);
+    console.log('[LINKS-PUT] Session:', session);
+    console.log('[LINKS-PUT] UserId from params:', userId);
+    
+    let user = null;
+    
+    // Try to get user from session first
+    if (session?.user?.email) {
+      user = await prisma.user.findUnique({
+        where: { email: session.user.email },
+      });
+      console.log('[LINKS-PUT] User found via session:', !!user, user?.email);
+    }
+    
+    // If no user from session, try userId from params
+    if (!user && userId) {
+      user = await prisma.user.findUnique({
+        where: { id: userId },
+      });
+      console.log('[LINKS-PUT] User found via userId:', !!user, user?.id);
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    })
-
     if (!user) {
+      console.log('[LINKS-PUT] No user found');
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 

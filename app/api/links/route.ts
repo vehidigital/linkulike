@@ -11,49 +11,93 @@ const linkSchema = z.object({
   isActive: z.boolean().optional(),
   customColor: z.string().optional(),
   useCustomColor: z.boolean().optional(),
+  highlight: z.boolean().optional(),
+  highlightStyle: z.string().optional(),
+  imageUrl: z.string().optional(),
 })
 
 // GET /api/links - Get all links for the current user
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('userId');
     
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      include: {
-        links: {
-          orderBy: { position: "asc" },
-          include: {
-            clicks: {
-              orderBy: { clickedAt: "desc" },
-              take: 10, // Get last 10 clicks for recent activity
-            },
-            _count: {
-              select: { clicks: true }, // Get total click count
+    const session = await getServerSession(authOptions);
+    console.log('[LINKS] Session:', session);
+    console.log('[LINKS] UserId from params:', userId);
+    
+    let user = null;
+    
+    // Try to get user from session first
+    if (session?.user?.email) {
+      user = await prisma.user.findUnique({
+        where: { email: session.user.email },
+        include: {
+          links: {
+            orderBy: { position: "asc" },
+            include: {
+              clicks: {
+                orderBy: { clickedAt: "desc" },
+                take: 10, // Get last 10 clicks for recent activity
+              },
+              _count: {
+                select: { clicks: true }, // Get total click count
+              },
             },
           },
         },
-      },
-    })
+      });
+      console.log('[LINKS] User found via session:', !!user, user?.email);
+    }
+    
+    // If no user from session, try userId from params
+    if (!user && userId) {
+      user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+          links: {
+            orderBy: { position: "asc" },
+            include: {
+              clicks: {
+                orderBy: { clickedAt: "desc" },
+                take: 10, // Get last 10 clicks for recent activity
+              },
+              _count: {
+                select: { clicks: true }, // Get total click count
+              },
+            },
+          },
+        },
+      });
+      console.log('[LINKS] User found via userId:', !!user, user?.id);
+    }
 
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 })
+      console.log('[LINKS] No user found, returning empty array');
+      return NextResponse.json([])
     }
 
     // Add analytics summary to each link
-    const linksWithAnalytics = user.links.map(link => ({
-      ...link,
+    const linksWithAnalytics = user.links.map((link: any) => ({
+      id: link.id,
+      title: link.title,
+      url: link.url,
+      position: link.position,
+      icon: link.icon,
+      isActive: link.isActive,
+      customColor: link.customColor,
+      useCustomColor: link.useCustomColor,
+      textColorOverride: link.textColorOverride,
+      highlight: link.highlight,
+      highlightStyle: link.highlightStyle,
+      imageUrl: link.imageUrl,
+      createdAt: link.createdAt,
+      updatedAt: link.updatedAt,
       analytics: {
-        totalClicks: link._count.clicks,
-        recentClicks: link.clicks.length,
-        lastClick: link.clicks[0]?.clickedAt || null,
+        totalClicks: link._count?.clicks || 0,
+        recentClicks: link.clicks?.length || 0,
+        lastClick: link.clicks?.[0]?.clickedAt || null,
       },
-      clicks: undefined, // Remove detailed clicks from response
-      _count: undefined, // Remove count from response
     }))
 
     return NextResponse.json(linksWithAnalytics)
@@ -69,22 +113,38 @@ export async function GET() {
 // POST /api/links - Create a new link
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('userId');
     
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const session = await getServerSession(authOptions);
+    console.log('[LINKS-POST] Session:', session);
+    console.log('[LINKS-POST] UserId from params:', userId);
+    
+    let user = null;
+    
+    // Try to get user from session first
+    if (session?.user?.email) {
+      user = await prisma.user.findUnique({
+        where: { email: session.user.email },
+      });
+      console.log('[LINKS-POST] User found via session:', !!user, user?.email);
+    }
+    
+    // If no user from session, try userId from params
+    if (!user && userId) {
+      user = await prisma.user.findUnique({
+        where: { id: userId },
+      });
+      console.log('[LINKS-POST] User found via userId:', !!user, user?.id);
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    })
-
     if (!user) {
+      console.log('[LINKS-POST] No user found');
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
     const body = await request.json()
-    const { title, url, icon, position, customColor, useCustomColor } = body
+    const { title, url, icon, position, customColor, useCustomColor, highlight, highlightStyle, imageUrl } = body
 
     if (!title || !url) {
       return NextResponse.json(
@@ -94,7 +154,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create link and audit log in a transaction
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       const link = await tx.link.create({
         data: {
           title,
@@ -103,6 +163,9 @@ export async function POST(request: NextRequest) {
           position: position || 0,
           customColor: customColor !== undefined ? customColor : "#f3f4f6",
           useCustomColor: useCustomColor !== undefined ? useCustomColor : true,
+          highlight: highlight !== undefined ? highlight : false,
+          highlightStyle: highlightStyle || "star",
+          imageUrl: imageUrl || null,
           userId: user.id,
         },
       })
@@ -138,17 +201,33 @@ export async function POST(request: NextRequest) {
 // PUT /api/links - Update multiple links (for reordering)
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('userId');
     
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const session = await getServerSession(authOptions);
+    console.log('[LINKS-PUT] Session:', session);
+    console.log('[LINKS-PUT] UserId from params:', userId);
+    
+    let user = null;
+    
+    // Try to get user from session first
+    if (session?.user?.email) {
+      user = await prisma.user.findUnique({
+        where: { email: session.user.email },
+      });
+      console.log('[LINKS-PUT] User found via session:', !!user, user?.email);
+    }
+    
+    // If no user from session, try userId from params
+    if (!user && userId) {
+      user = await prisma.user.findUnique({
+        where: { id: userId },
+      });
+      console.log('[LINKS-PUT] User found via userId:', !!user, user?.id);
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    })
-
     if (!user) {
+      console.log('[LINKS-PUT] No user found');
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 

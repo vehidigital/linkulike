@@ -10,6 +10,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Social {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  platform  String   // z.B. "instagram", "youtube", "twitter"
+  value     String   // z.B. Username, Handle oder URL
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, platform]) // Jeder User kann jede Plattform nur einmal haben
+}
+
 model User {
   id                  String   @id @default(cuid())
   email               String   @unique
@@ -20,18 +33,36 @@ model User {
   avatarUrl           String?
   originalAvatarUrl   String?
   avatarBorderColor   String? // Rahmenfarbe für Avatar
+  avatarShape         String?  @default("circle") // 'circle' oder 'rectangle'
   theme               String?  @default("default")
   backgroundColor     String?  @default("#000000")
   backgroundGradient  String?  @default("linear-gradient(135deg, #667eea 0%, #764ba2 100%)")
   buttonStyle         String?  @default("gradient")
   buttonColor         String?  @default("#ffffff")
   buttonGradient      String?  @default("linear-gradient(135deg, #667eea 0%, #764ba2 100%)")
+  buttonTextColor     String?  @default("#ffffff")
+  useCustomButtonTextColor Boolean? @default(false)
   textColor           String?  @default("#ffffff")
   fontFamily          String?  @default("Inter")
 
   backgroundImageUrl String? // URL für eigenes Hintergrundbild
+  originalBackgroundImageUrl String? // URL für das Original-Hintergrundbild (ohne Crop)
+  backgroundCropDesktopUrl String? // URL für Desktop-Crop
+  backgroundCropMobileUrl String? // URL für Mobile-Crop
   backgroundCropDesktop Json? // Crop-Parameter für Desktop (x, y, width, height, zoom, rotation)
   backgroundCropMobile Json? // Crop-Parameter für Mobile (x, y, width, height, zoom, rotation)
+  backgroundOverlayType String? // 'none', 'dark', 'light', 'custom'
+  backgroundOverlayColor String? // Nur bei custom
+  backgroundOverlayOpacity Float? // Nur bei custom
+  backgroundImageActive Boolean? @default(false) // NEU: Flag für aktiven Status des Hintergrundbilds
+
+  // Pro-Features für individuelle Textfarben
+  displayNameColor String? // Individuelle Farbe für Display Name
+  usernameColor String? // Individuelle Farbe für Username
+  bioColor String? // Individuelle Farbe für Bio
+  footerColor String? // Individuelle Farbe für Footer (Gefällt mir, Teilen, Powered by)
+
+  showBranding Boolean? @default(true)
 
   isPremium           Boolean  @default(false)
   createdAt           DateTime @default(now())
@@ -39,7 +70,13 @@ model User {
 
   lastUsernameChange  DateTime?
 
+  // --- NEU für Onboarding/OTP ---
+  otp                 String?
+  otpExpires          DateTime?
+  isVerified          Boolean  @default(false)
+
   links Link[]
+  socials Social[]
 
   // Neue Relationen
   emailVerifications  EmailVerification[]
@@ -74,6 +111,9 @@ model Link {
   customColor String?  // Custom color for this specific link
   useCustomColor Boolean @default(false) // Whether to use custom color or auto-detect
   textColorOverride String? // 'light', 'dark' oder undefined für Button-Textfarbe
+  highlight   Boolean  @default(false) // Highlight this link
+  highlightStyle String? @default("star") // "star", "shake", "pulse", "glow", "sparkle"
+  imageUrl    String?  // Optional image URL for the link
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
