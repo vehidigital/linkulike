@@ -89,25 +89,59 @@ export function OnboardingSetup({ onComplete }: { onComplete: (data: any) => voi
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col items-center gap-6 w-full max-w-lg mx-auto mt-10 p-8 bg-white rounded-3xl shadow-xl border border-gray-100">
-      <div className="w-full flex flex-col gap-2 items-center">
-        <label className="font-bold text-lg mb-2">Setup your page</label>
-        <div className="w-24 h-24 rounded-full bg-gray-100 border-2 border-gray-200 flex items-center justify-center mb-2 overflow-hidden">
+      <div className="w-full flex flex-col gap-4 items-center">
+        <label className="font-bold text-xl mb-2">Setup your page</label>
+        
+        {/* Improved Avatar Upload Section */}
+        <div className="w-full space-y-4">
+          <div className="text-center">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Profilbild</h3>
+            <p className="text-sm text-gray-600 mb-4">Lade ein Profilbild hoch (optional)</p>
+          </div>
+          
+          <div className="flex items-center gap-6">
+            {/* Avatar Preview */}
+            <div className="flex-shrink-0">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 border-3 border-gray-200 shadow-lg overflow-hidden flex items-center justify-center">
           {avatarPreview ? (
             <img src={avatarPreview} alt="avatar" className="w-full h-full object-cover" />
           ) : (
-            <span className="text-3xl text-gray-400">📷</span>
+                  <span className="text-white font-bold text-lg">📷</span>
           )}
         </div>
+            </div>
+            
+            {/* Upload Area */}
+            <div className="flex-1">
+              <label className="block w-full p-3 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-purple-400 hover:bg-purple-50 transition-all duration-200">
         <input 
           type="file" 
           accept="image/*" 
           onChange={handleAvatarChange} 
-          className="mb-2"
+                  className="hidden"
           disabled={loading || isUploading}
         />
+                <div className="flex items-center gap-3">
+                  <div className="text-xl">📤</div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">
+                      Foto auswählen
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      JPG, PNG, WebP oder GIF • Max. 10MB
+                    </p>
+                  </div>
+                </div>
+              </label>
+            </div>
+          </div>
+          
         {isUploading && (
+            <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
           <div className="text-sm text-blue-600">Avatar wird hochgeladen...</div>
+            </div>
         )}
+        </div>
       </div>
       <input
         type="text"

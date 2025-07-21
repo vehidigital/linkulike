@@ -40,7 +40,7 @@ interface DesignContextType {
   updatePreview: (updates: Partial<DesignSettings>) => void
   resetPreview: () => void
   isLoading: boolean
-  saveSettings: () => Promise<void>
+  saveSettings: (override?: Partial<DesignSettings>) => Promise<void>
 }
 
 const defaultSettings: DesignSettings = {
@@ -83,6 +83,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   const [savedSettings, setSavedSettings] = useState<DesignSettings>(defaultSettings)
   const [isLoading, setIsLoading] = useState(true)
   const [isInitialized, setIsInitialized] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   // Load settings from API on mount
   useEffect(() => {
@@ -97,6 +98,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       if (response.ok) {
         const data = await response.json()
         console.log('Loaded design settings from API:', data);
+        console.log('API GET: avatarBorderColor =', data.avatarBorderColor);
         // Ensure isCustomTheme is properly set based on selectedTheme
         const isCustomTheme = data.selectedTheme === 'create-your-own'
         const loadedSettings = { 
@@ -151,6 +153,26 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       console.log('💾 New savedSettings after update:', newSettings);
       return newSettings
     })
+    
+    // Debug: Log the current state after updates
+    setTimeout(() => {
+      console.log('💾 State after updateSettings - previewSettings:', {
+        backgroundColor: previewSettings.backgroundColor,
+        avatarBorderColor: previewSettings.avatarBorderColor,
+        socialPosition: previewSettings.socialPosition,
+        showBranding: previewSettings.showBranding,
+        showShareButton: previewSettings.showShareButton,
+        selectedFont: previewSettings.selectedFont
+      });
+      console.log('💾 State after updateSettings - savedSettings:', {
+        backgroundColor: savedSettings.backgroundColor,
+        avatarBorderColor: savedSettings.avatarBorderColor,
+        socialPosition: savedSettings.socialPosition,
+        showBranding: savedSettings.showBranding,
+        showShareButton: savedSettings.showShareButton,
+        selectedFont: savedSettings.selectedFont
+      });
+    }, 0);
   }
 
   const updatePreview = (updates: Partial<DesignSettings>) => {
@@ -171,30 +193,34 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     })
   }
 
-  const saveSettings = async () => {
+  const saveSettings = async (override: Partial<DesignSettings> = {}) => {
+    if (isSaving) return; // Verhindere parallele Saves
+    setIsSaving(true);
     try {
-      console.log('saveSettings called with savedSettings:', savedSettings);
+      const settingsToSave = { ...previewSettings, ...override };
+      console.log('💾 saveSettings called with settingsToSave:', settingsToSave);
+      console.log('💾 Sende an API: avatarBorderColor =', settingsToSave.avatarBorderColor);
       const url = `/api/user/design?userId=${userId}`;
       const response = await fetch(url, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(savedSettings),
-      })
-
+        body: JSON.stringify(settingsToSave),
+      });
       if (!response.ok) {
         const errorText = await response.text();
         console.error('API response not ok:', response.status, errorText);
-        throw new Error(`Failed to save settings: ${response.status} ${errorText}`)
+        throw new Error(`Failed to save settings: ${response.status} ${errorText}`);
       }
-
       const result = await response.json();
-      console.log('Design settings saved successfully:', result);
+      console.log('💾 Design settings saved successfully:', result);
+      setSavedSettings({ ...settingsToSave });
+      setIsSaving(false);
       return result;
     } catch (error) {
-      console.error('Error saving design settings:', error)
-      throw error
+      setIsSaving(false);
+      console.error('💾 Error saving design settings:', error)
     }
   }
 

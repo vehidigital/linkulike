@@ -8,14 +8,16 @@ import { Switch } from "@/components/ui/switch";
 import { useDesign } from "./DesignContext";
 import { UploadAvatar, UploadBackground } from "./UploadComponents";
 import { themeTemplates, applyThemeToSettings } from "@/lib/theme-templates";
-import { Play, Check, X } from "lucide-react";
+import { Play, Check, X, Camera, Palette, User } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ColorPicker } from "@/components/ui/color-picker";
-
+const AVATAR_BORDER_COLORS = [
+  '#000000', '#ffffff', '#f59e0b', '#3b82f6', '#ef4444', '#10b981', '#8b5cf6', '#ec4899'
+];
 
 
 // ColorPickerBubble is now replaced with the new ColorPicker component
@@ -140,209 +142,83 @@ export function ProfileCard() {
   
   return (
     <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8">
-      {/* Header */}
       <div className="mb-6">
         <h3 className="text-xl font-bold text-gray-900">Profil</h3>
         <p className="text-sm text-gray-600">Deine persönlichen Informationen</p>
       </div>
-
-      <div className="space-y-5">
-        {/* Main Content Row */}
-        <div className="flex items-start gap-5">
-          {/* Avatar Section */}
-          <div className="flex-shrink-0">
-            <div className="text-center space-y-3">
-              <Avatar className="w-16 h-16 mx-auto border-2 border-gray-100 shadow-md">
-                <AvatarImage src={settings.avatarImage} />
-                <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-white font-bold text-sm">
-                  {settings.displayName ? settings.displayName.slice(0, 2).toUpperCase() : 'U'}
-                </AvatarFallback>
-              </Avatar>
-              <div className="space-y-2">
-                <UploadAvatar onUploadComplete={(url) => {
-                  console.log('Avatar uploaded:', url);
-                }} />
-              </div>
-            </div>
-          </div>
-
-          {/* Name & Bio */}
-          <div className="flex-1 space-y-3">
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-700">
-                Anzeigename <span className="text-red-500">*</span>
-              </label>
-              {isEditingName ? (
-                <div className="space-y-3">
-                  <Input
-                    placeholder="Dein Name"
-                    value={tempName}
-                    onChange={e => handleNameChange(e.target.value)}
-                    maxLength={NAME_LIMIT}
-                    className="h-10 text-sm border-gray-200 focus:border-purple-500 focus:ring-purple-500"
-                    autoFocus
-                  />
-                  <div className="flex justify-between items-center">
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        onClick={handleNameSave}
-                        disabled={!tempName.trim() || tempName.trim() === originalName}
-                        className="h-8 px-4 bg-green-600 hover:bg-green-700 text-white font-medium"
-                      >
-                        <Check className="w-4 h-4 mr-1" />
-                        Speichern
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleNameCancel}
-                        className="h-8 px-4 border-gray-300 hover:bg-gray-50"
-                      >
-                        <X className="w-4 h-4 mr-1" />
-                        Abbrechen
-                      </Button>
-                    </div>
-                    <span className={`text-xs font-medium ${tempName.length > NAME_LIMIT * 0.8 ? 'text-orange-500' : 'text-gray-400'}`}>
-                      {tempName.length}/{NAME_LIMIT}
-                    </span>
-                  </div>
-                </div>
+      <div className="flex flex-row gap-8 items-start">
+        {/* Linke Seite: Name & Bio */}
+        <div className="flex-1 flex flex-col gap-6 justify-center">
+          <input
+            className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-100 text-lg font-medium focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            placeholder="Anzeigename"
+            value={tempName}
+            onChange={e => handleNameChange(e.target.value)}
+            maxLength={NAME_LIMIT}
+          />
+          <textarea
+            className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-100 text-base font-normal focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent min-h-[48px]"
+            placeholder="Bio (optional)"
+            value={tempBio}
+            onChange={e => handleBioChange(e.target.value)}
+            maxLength={BIO_LIMIT}
+          />
+        </div>
+        {/* Rechte Seite: Avatar Upload */}
+        <div className="flex flex-col items-center gap-4">
+          <label htmlFor="avatar-upload" className="cursor-pointer">
+            <div className={`w-32 h-32 ${settings.avatarShape === 'circle' ? 'rounded-full' : 'rounded-lg'} flex items-center justify-center bg-gray-100 border-2 border-dashed border-gray-300`}> 
+              {settings.avatarImage ? (
+                <img src={settings.avatarImage} alt="Avatar" className={`w-full h-full object-cover ${settings.avatarShape === 'circle' ? 'rounded-full' : 'rounded-lg'}`} />
               ) : (
-                <div 
-                  className="h-10 px-3 py-2 text-sm border border-gray-200 rounded-md bg-white cursor-pointer hover:border-purple-300 hover:bg-purple-50 transition-all duration-200 flex items-center justify-between group"
-                  onClick={() => setIsEditingName(true)}
-                >
-                  <span className={settings.displayName ? 'text-gray-900' : 'text-gray-500'}>
-                    {settings.displayName || 'Dein Name'}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-400">{settings.displayName?.length || 0}/{NAME_LIMIT}</span>
-                    <div className="w-4 h-4 text-gray-400 group-hover:text-purple-500 transition-colors">
-                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
+                <Camera className="w-16 h-16 text-gray-400" />
               )}
             </div>
-
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-700">
-                Bio <span className="text-gray-400">(optional)</span>
-              </label>
-              {isEditingBio ? (
-                <div className="space-y-3">
-                  <textarea
-                    placeholder="Erzähle etwas über dich..."
-                    value={tempBio}
-                    onChange={e => handleBioChange(e.target.value)}
-                    maxLength={BIO_LIMIT}
-                    className="w-full h-20 rounded-md border border-gray-200 bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 resize-none"
-                    autoFocus
-                  />
-                  <div className="flex justify-between items-center">
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        onClick={handleBioSave}
-                        disabled={tempBio === originalBio}
-                        className="h-8 px-4 bg-green-600 hover:bg-green-700 text-white font-medium"
-                      >
-                        <Check className="w-4 h-4 mr-1" />
-                        Speichern
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleBioCancel}
-                        className="h-8 px-4 border-gray-300 hover:bg-gray-50"
-                      >
-                        <X className="w-4 h-4 mr-1" />
-                        Abbrechen
-                      </Button>
-                    </div>
-                    <span className={`text-xs font-medium ${tempBio.length > BIO_LIMIT * 0.8 ? 'text-orange-500' : 'text-gray-400'}`}>
-                      {tempBio.length}/{BIO_LIMIT}
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <div 
-                  className="min-h-[48px] px-3 py-2 text-sm border border-gray-200 rounded-md bg-white cursor-pointer hover:border-purple-300 hover:bg-purple-50 transition-all duration-200 flex items-start justify-between group"
-                  onClick={() => setIsEditingBio(true)}
+            <input id="avatar-upload" type="file" accept="image/*" className="hidden" />
+          </label>
+        </div>
+      </div>
+      {/* Darunter: Randfarbe und Form */}
+      <div className="flex flex-row gap-6 items-center mt-8">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Randfarbe</label>
+          <div className="flex gap-3 items-center">
+            <ColorPicker 
+              value={settings.avatarBorderColor || '#e5e7eb'}
+              onChange={async color => {
+                updateSettings({ avatarBorderColor: color });
+                updatePreview({ avatarBorderColor: color });
+                await saveSettings({ avatarBorderColor: color });
+              }}
+              variant="bubble"
+              size="lg"
+            />
+            <div className="flex gap-2 mt-2">
+              {AVATAR_BORDER_COLORS.map(color => (
+                <button
+                  key={color}
+                  type="button"
+                  onClick={async () => {
+                    updateSettings({ avatarBorderColor: color });
+                    updatePreview({ avatarBorderColor: color });
+                    await saveSettings({ avatarBorderColor: color });
+                  }}
+                  className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all duration-150 ${settings.avatarBorderColor === color ? 'border-blue-500' : 'border-gray-200'}`}
+                  style={{ background: color }}
                 >
-                  <span className={settings.bio ? 'text-gray-900' : 'text-gray-500'}>
-                    {settings.bio || 'Erzähle etwas über dich...'}
-                  </span>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className="text-xs text-gray-400">{settings.bio?.length || 0}/{BIO_LIMIT}</span>
-                    <div className="w-4 h-4 text-gray-400 group-hover:text-purple-500 transition-colors">
-                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-              )}
+                  {settings.avatarBorderColor === color && <span className="block w-3 h-3 rounded-full bg-white border border-black shadow-sm" />}
+                </button>
+              ))}
             </div>
           </div>
         </div>
-
-        {/* Avatar Customization */}
-        <div className="pt-3 border-t border-gray-100">
-          <div className="grid grid-cols-2 gap-4">
-            {/* Avatar Shape */}
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-700">Form</label>
-              <RadioGroup 
-                value={settings.avatarShape || 'circle'} 
-                onValueChange={(value) => handleUpdate({ avatarShape: value as 'circle' | 'rectangle' })}
-                className="flex gap-3"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="circle" id="circle" className="text-purple-600" />
-                  <Label htmlFor="circle" className="text-sm">Kreis</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="rectangle" id="rectangle" className="text-purple-600" />
-                  <Label htmlFor="rectangle" className="text-sm">Rechteck</Label>
-                </div>
-              </RadioGroup>
-            </div>
-
-            {/* Border Color */}
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-700">Randfarbe</label>
-              <div className="flex items-center gap-2">
-                <div className="grid grid-cols-8 gap-1">
-                  {['#ffffff', '#000000', '#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'].map((color) => (
-                    <button
-                      key={color}
-                      onClick={() => handleUpdate({ avatarBorderColor: color })}
-                      className={`w-6 h-6 rounded-full border-2 transition-all ${
-                        settings.avatarBorderColor === color 
-                          ? 'border-gray-400 scale-110' 
-                          : 'border-gray-200 hover:scale-105'
-                      }`}
-                      style={{ backgroundColor: color }}
-                      title={color}
-                    />
-                  ))}
-                </div>
-                <ColorPicker
-                  value={settings.avatarBorderColor || '#ffffff'}
-                  onChange={(color) => handleUpdate({ avatarBorderColor: color })}
-                  size="sm"
-                  variant="bubble"
-                />
-              </div>
-            </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Format</label>
+          <div className="flex gap-2">
+            <button type="button" onClick={async () => { updateSettings({ avatarShape: 'circle' }); updatePreview({ avatarShape: 'circle' }); await saveSettings(); }} className={`w-10 h-10 rounded-full border-2 ${settings.avatarShape === 'circle' ? 'border-pink-500' : 'border-gray-200'}`}></button>
+            <button type="button" onClick={async () => { updateSettings({ avatarShape: 'rectangle' }); updatePreview({ avatarShape: 'rectangle' }); await saveSettings(); }} className={`w-10 h-10 rounded-lg border-2 ${settings.avatarShape === 'rectangle' ? 'border-pink-500' : 'border-gray-200'}`}></button>
           </div>
         </div>
-
-
       </div>
     </div>
   );
@@ -360,7 +236,7 @@ const ImageIcon = () => (
 );
 
 export function BackgroundCard() {
-  const { settings, updateSettings, saveSettings } = useDesign();
+  const { settings, updateSettings, updatePreview, saveSettings } = useDesign();
 
   // Color state
   const color = settings.backgroundColor || '#1e3a8a';
@@ -369,7 +245,8 @@ export function BackgroundCard() {
   const handleColorChange = async (hex: string) => {
     try {
       updateSettings({ backgroundColor: hex, backgroundType: 'color', backgroundImage: '' });
-      await saveSettings();
+      updatePreview({ backgroundColor: hex, backgroundType: 'color', backgroundImage: '' });
+      await saveSettings({ backgroundColor: hex, backgroundType: 'color', backgroundImage: '' });
       console.log('Background color saved:', hex);
     } catch (e) {
       console.error('Error saving background color:', e);
@@ -379,6 +256,8 @@ export function BackgroundCard() {
 
   const handleUpdate = async (updates: Partial<typeof settings>) => {
     try {
+      console.log('handleUpdate called with:', updates);
+      
       if (updates.backgroundType === 'color') {
         updateSettings({ ...updates, backgroundImage: '' });
       } else if (updates.backgroundType === 'image') {
@@ -386,8 +265,9 @@ export function BackgroundCard() {
       } else {
         updateSettings(updates);
       }
+      
       await saveSettings();
-      console.log('Background settings saved:', updates);
+      console.log('Background settings saved successfully:', updates);
     } catch (e) {
       console.error('Error saving background settings:', e);
       alert('Fehler beim Speichern!');
@@ -443,7 +323,17 @@ export function BackgroundCard() {
           {presetColors.map((presetColor) => (
             <button
               key={presetColor}
-              onClick={() => handleUpdate({ backgroundColor: presetColor })}
+              onClick={async () => {
+                try {
+                  updateSettings({ backgroundColor: presetColor, backgroundType: 'color', backgroundImage: '' });
+                  updatePreview({ backgroundColor: presetColor, backgroundType: 'color', backgroundImage: '' });
+                  await saveSettings({ backgroundColor: presetColor, backgroundType: 'color', backgroundImage: '' });
+                  console.log('Preset background color saved:', presetColor);
+                } catch (e) {
+                  console.error('Error saving preset background color:', e);
+                  alert('Fehler beim Speichern der Hintergrundfarbe!');
+                }
+              }}
               className={`w-10 h-10 rounded-full border-2 transition-all hover:scale-110 ${
                 settings.backgroundColor === presetColor ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200'
               }`}
@@ -468,7 +358,7 @@ export function BackgroundCard() {
 }
 
 export function ThemesCard() {
-  const { settings, updateSettings, saveSettings } = useDesign();
+  const { settings, updateSettings, updatePreview, saveSettings } = useDesign();
   const sortedThemes = [
     ...themeTemplates.filter(t => t.id !== 'create-your-own'),
     ...themeTemplates.filter(t => t.id === 'create-your-own'),
@@ -478,10 +368,12 @@ export function ThemesCard() {
     try {
       if (themeId === 'create-your-own') {
         updateSettings({ selectedTheme: themeId, isCustomTheme: true });
+        updatePreview({ selectedTheme: themeId, isCustomTheme: true });
       } else {
         const themeSettings = applyThemeToSettings(themeId);
         if (themeSettings) {
           updateSettings({ ...themeSettings, isCustomTheme: false });
+          updatePreview({ ...themeSettings, isCustomTheme: false });
         }
       }
       await saveSettings();
@@ -520,12 +412,13 @@ function getContrastColor(hex: string) {
 }
 
 export function ButtonCard() {
-  const { settings, updateSettings, saveSettings } = useDesign();
+  const { settings, updateSettings, updatePreview, saveSettings } = useDesign();
   if (!settings.isCustomTheme) return null;
   
-  const handleUpdate = async (updates: Partial<typeof settings>) => {
+  const handleButtonUpdate = async (updates: Partial<typeof settings>) => {
     try {
       updateSettings(updates);
+      updatePreview(updates);
       await saveSettings();
     } catch (error) {
       console.error('Error saving button settings:', error);
@@ -554,7 +447,7 @@ export function ButtonCard() {
         <label className="text-sm font-semibold text-gray-700">Button-Stil</label>
         <div className="grid grid-cols-2 gap-3">
           <button
-            onClick={() => handleUpdate({ buttonStyle: 'filled' })}
+            onClick={() => handleButtonUpdate({ buttonStyle: 'filled' })}
             className={`p-4 rounded-xl border-2 transition-all hover:scale-105 ${
               settings.buttonStyle === 'filled' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
             }`}
@@ -572,7 +465,7 @@ export function ButtonCard() {
           </button>
           
           <button
-            onClick={() => handleUpdate({ buttonStyle: 'outlined' })}
+            onClick={() => handleButtonUpdate({ buttonStyle: 'outlined' })}
             className={`p-4 rounded-xl border-2 transition-all hover:scale-105 ${
               settings.buttonStyle === 'outlined' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
             }`}
@@ -597,7 +490,10 @@ export function ButtonCard() {
         <div className="flex items-center gap-3">
           <ColorPicker 
             value={settings.buttonColor || '#3b82f6'} 
-            onChange={(c: string) => handleUpdate({ buttonColor: c })} 
+            onChange={async (c: string) => {
+              await handleButtonUpdate({ buttonColor: c });
+              await saveSettings({ buttonColor: c });
+            }} 
             variant="bubble"
             size="md"
           />
@@ -623,14 +519,14 @@ export function ButtonCard() {
           <button
             type="button"
             className={`px-3 py-1 rounded-lg border text-sm font-medium transition-colors ${!settings.useCustomButtonTextColor ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-blue-50'}`}
-            onClick={() => handleUpdate({ useCustomButtonTextColor: false })}
+            onClick={() => handleButtonUpdate({ useCustomButtonTextColor: false })}
           >
             Auto
           </button>
           <button
             type="button"
             className={`px-3 py-1 rounded-lg border text-sm font-medium transition-colors ${settings.useCustomButtonTextColor ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-blue-50'}`}
-            onClick={() => handleUpdate({ useCustomButtonTextColor: true })}
+            onClick={() => handleButtonUpdate({ useCustomButtonTextColor: true })}
           >
             Manuell
           </button>
@@ -645,7 +541,7 @@ export function ButtonCard() {
           <div className="flex items-center gap-3">
             <ColorPicker 
               value={settings.buttonTextColor || buttonTextColor} 
-              onChange={(c: string) => handleUpdate({ buttonTextColor: c })} 
+              onChange={async (c: string) => handleButtonUpdate({ buttonTextColor: c })} 
               variant="bubble"
               size="sm"
             />
@@ -671,13 +567,18 @@ export function ButtonCard() {
 }
 
 export function FontCard() {
-  const { settings, updateSettings, saveSettings } = useDesign();
+  const { settings, updateSettings, updatePreview, saveSettings } = useDesign();
   if (!settings.isCustomTheme) return null;
   
-  const handleUpdate = async (updates: Partial<typeof settings>) => {
+  const handleFontUpdate = async (updates: Partial<typeof settings>) => {
     try {
       updateSettings(updates);
-      await saveSettings();
+      updatePreview(updates);
+      if (updates.selectedFont) {
+        await saveSettings({ selectedFont: updates.selectedFont });
+      } else {
+        await saveSettings(updates);
+      }
     } catch (error) {
       console.error('Error saving font settings:', error);
     }
@@ -703,7 +604,7 @@ export function FontCard() {
         {fonts.map((font) => (
           <button
             key={font.label}
-            onClick={() => handleUpdate({ selectedFont: font.value })}
+            onClick={async () => handleFontUpdate({ selectedFont: font.value })}
             className={`p-2 rounded border text-xs transition-all hover:scale-105 ${settings.selectedFont === font.value ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
             style={{ fontFamily: font.value }}
           >
@@ -714,7 +615,7 @@ export function FontCard() {
       <div className="flex items-center gap-3">
         <ColorPicker 
           value={textColor} 
-          onChange={(c: string) => handleUpdate({ textColor: c })} 
+          onChange={(c: string) => handleFontUpdate({ textColor: c })} 
           variant="bubble"
           size="md"
         />
@@ -733,7 +634,7 @@ export function SocialPositionCard() {
   const handleUpdate = async (value: 'top' | 'middle' | 'bottom') => {
     try {
       updateSettings({ socialPosition: value });
-      await saveSettings();
+      await saveSettings({ socialPosition: value });
       console.log('Social position saved:', value);
     } catch (error) {
       console.error('Error saving social position:', error);

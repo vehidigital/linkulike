@@ -171,32 +171,27 @@ export function ColorPicker({
             </button>
           </div>
 
-          {/* Current Color Display */}
-          <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div 
-                  className="w-8 h-8 rounded-lg border-2 border-gray-300 shadow-sm"
-                  style={{ backgroundColor: customColor }}
-                />
-                <div>
-                  <span className="text-sm font-mono text-gray-700">{customColor}</span>
-                  {showContrastWarning && hasLowContrast(customColor) && (
-                    <div className="flex items-center gap-1 text-amber-600 text-xs">
-                      <AlertTriangle className="w-3 h-3" />
-                      <span>Niedriger Kontrast</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-              <button
-                onClick={copyToClipboard}
-                className="p-2 hover:bg-gray-200 rounded transition-colors"
-                title="Farbe kopieren"
-              >
-                <Copy className={cn("w-4 h-4", copied ? "text-green-600" : "text-gray-500")} />
-              </button>
-            </div>
+          {/* Aktueller Hex-Code + Copy + Kontrastwarnung */}
+          <div className="mb-4 flex items-center gap-2">
+            <input
+              type="text"
+              value={customColor}
+              onChange={(e) => handleColorChange(e.target.value)}
+              className="w-28 px-2 py-1 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="#000000"
+              aria-label="Hex-Farbcode eingeben"
+              maxLength={7}
+            />
+            <button
+              onClick={copyToClipboard}
+              className="p-2 hover:bg-gray-200 rounded transition-colors"
+              title="Farbe kopieren"
+            >
+              <Copy className={cn("w-4 h-4", copied ? "text-green-600" : "text-gray-500")} />
+            </button>
+            {showContrastWarning && hasLowContrast(customColor) && (
+              <AlertTriangle className="w-4 h-4 text-amber-600 ml-1" />
+            )}
           </div>
 
           {/* Color Picker Input */}
@@ -212,16 +207,6 @@ export function ColorPicker({
                 className="w-12 h-12 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-gray-400 transition-colors"
                 aria-label="Farbe auswählen"
               />
-              <div className="flex-1">
-                <input
-                  type="text"
-                  value={customColor}
-                  onChange={(e) => handleColorChange(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="#000000"
-                  aria-label="Hex-Farbcode eingeben"
-                />
-              </div>
             </div>
           </div>
 
@@ -230,7 +215,6 @@ export function ColorPicker({
             <div className="flex items-center justify-between mb-2">
               <label className="text-sm font-medium text-gray-700">Farbpaletten</label>
             </div>
-            
             {/* Palette Tabs */}
             <div className="flex gap-1 mb-3 p-1 bg-gray-100 rounded-lg">
               {Object.entries(PALETTE_NAMES).map(([key, name]) => (
@@ -248,7 +232,6 @@ export function ColorPicker({
                 </button>
               ))}
             </div>
-
             {/* Active Palette Colors */}
             <div className="grid grid-cols-5 gap-2">
               {COLOR_PALETTES[activePalette].map((color) => (
@@ -273,8 +256,6 @@ export function ColorPicker({
               ))}
             </div>
           </div>
-
-          {/* Vorschau entfernt */}
         </div>
       )}
     </div>

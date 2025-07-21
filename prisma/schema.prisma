@@ -63,6 +63,8 @@ model User {
   footerColor String? // Individuelle Farbe für Footer (Gefällt mir, Teilen, Powered by)
 
   showBranding Boolean? @default(true)
+  socialPosition String? @default("bottom") // 'top', 'middle', 'bottom'
+  showShareButton Boolean? @default(false)
 
   isPremium           Boolean  @default(false)
   createdAt           DateTime @default(now())

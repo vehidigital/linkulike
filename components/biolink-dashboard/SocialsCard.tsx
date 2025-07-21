@@ -193,10 +193,10 @@ export function SocialsCard({ onSocialChanged }: { onSocialChanged?: () => void 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           platform: newSocial.platform, 
-          url: newSocial.value,
+          url: newSocial.platform === 'phone' ? `tel:${newSocial.value}` : newSocial.platform === 'email' ? `mailto:${newSocial.value}` : newSocial.value,
           customPlatform: newSocial.customPlatform,
           customIcon: newSocial.customIcon,
-          isUrl: newSocial.isUrl
+          isUrl: true
         }),
       });
       
@@ -236,7 +236,8 @@ export function SocialsCard({ onSocialChanged }: { onSocialChanged?: () => void 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           platform: editSocial.platform === 'other' ? editCustomPlatform : editSocial.platform, 
-          value: editSocial.value 
+          value: editSocial.platform === 'phone' ? `tel:${editSocial.value}` : editSocial.platform === 'email' ? `mailto:${editSocial.value}` : editSocial.value,
+          isUrl: true
         }),
       });
       
@@ -480,7 +481,6 @@ export function SocialsCard({ onSocialChanged }: { onSocialChanged?: () => void 
                 <option value="website">Website</option>
                 <option value="email">E-Mail</option>
                 <option value="phone">Telefon</option>
-                <option value="address">Adresse</option>
                 <option value="other">Sonstiges</option>
               </select>
             </div>
@@ -519,50 +519,18 @@ export function SocialsCard({ onSocialChanged }: { onSocialChanged?: () => void 
               </>
             )}
             
-            {(newSocial.platform === 'email' || newSocial.platform === 'phone' || newSocial.platform === 'address') && (
-              <div className="space-y-3">
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="radio"
-                    id="text-mode"
-                    name="input-mode"
-                    checked={!newSocial.isUrl}
-                    onChange={() => setNewSocial({ ...newSocial, isUrl: false })}
-                    className="text-purple-600 focus:ring-purple-500"
-                  />
-                  <label htmlFor="text-mode" className="text-sm font-medium text-gray-700">
-                    Text (Infobox wird angezeigt)
-                  </label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="radio"
-                    id="url-mode"
-                    name="input-mode"
-                    checked={newSocial.isUrl}
-                    onChange={() => setNewSocial({ ...newSocial, isUrl: true })}
-                    className="text-purple-600 focus:ring-purple-500"
-                  />
-                  <label htmlFor="url-mode" className="text-sm font-medium text-gray-700">
-                    URL (Direkter Link)
-                  </label>
-                </div>
-              </div>
-            )}
-            
+            {/* NEU: Kein Text/URL-Radio mehr für E-Mail und Telefon beim Hinzufügen */}
+            {(newSocial.platform === 'email' || newSocial.platform === 'phone') && null}
+
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">
-                {newSocial.isUrl ? 'URL' : 
-                 newSocial.platform === 'email' ? 'E-Mail Adresse' : 
-                 newSocial.platform === 'phone' ? 'Telefonnummer' : 
-                 newSocial.platform === 'address' ? 'Adresse' : 'URL'}
+                {newSocial.platform === 'email' ? 'E-Mail Adresse' : 
+                 newSocial.platform === 'phone' ? 'Telefonnummer' : 'URL'}
               </label>
               <Input
                 placeholder={
-                  newSocial.isUrl ? 'https://...' :
                   newSocial.platform === 'email' ? 'beispiel@email.com' :
                   newSocial.platform === 'phone' ? '+49 123 456789' :
-                  newSocial.platform === 'address' ? 'Musterstraße 123, 12345 Stadt' :
                   'https://instagram.com/username'
                 }
                 value={newSocial.value}
@@ -604,94 +572,90 @@ export function SocialsCard({ onSocialChanged }: { onSocialChanged?: () => void 
                 Bearbeite die Details deiner Social Media Platform.
               </DialogDescription>
             </DialogHeader>
-          {editSocial && (
-            <form onSubmit={handleEditSocial} className="flex flex-col gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Platform</label>
-                <select 
-                  value={editSocial.platform} 
-                  onChange={e => setEditSocial({ ...editSocial, platform: e.target.value })}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:border-purple-500 focus:ring-purple-500"
-                  required
-                >
-                  <option value="instagram">Instagram</option>
-                  <option value="tiktok">TikTok</option>
-                  <option value="youtube">YouTube</option>
-                  <option value="twitter">Twitter</option>
-                  <option value="facebook">Facebook</option>
-                  <option value="linkedin">LinkedIn</option>
-                  <option value="snapchat">Snapchat</option>
-                  <option value="twitch">Twitch</option>
-                  <option value="discord">Discord</option>
-                  <option value="telegram">Telegram</option>
-                  <option value="whatsapp">WhatsApp</option>
-                  <option value="spotify">Spotify</option>
-                  <option value="apple">Apple Music</option>
-                  <option value="soundcloud">SoundCloud</option>
-                  <option value="pinterest">Pinterest</option>
-                  <option value="reddit">Reddit</option>
-                  <option value="github">GitHub</option>
-                  <option value="behance">Behance</option>
-                  <option value="dribbble">Dribbble</option>
-                  <option value="figma">Figma</option>
-                  <option value="notion">Notion</option>
-                  <option value="medium">Medium</option>
-                  <option value="substack">Substack</option>
-                  <option value="clubhouse">Clubhouse</option>
-                  <option value="signal">Signal</option>
-                  <option value="cameo">Cameo</option>
-                  <option value="buymeacoffee">Buy Me a Coffee</option>
-                  <option value="kofi">Ko-fi</option>
-                  <option value="patreon">Patreon</option>
-                  <option value="onlyfans">OnlyFans</option>
-                  <option value="producthunt">Product Hunt</option>
-                  <option value="appstore">App Store</option>
-                  <option value="googleplay">Google Play</option>
-                  <option value="website">Website</option>
-                  <option value="email">E-Mail</option>
-                  <option value="phone">Telefon</option>
-                  <option value="address">Adresse</option>
-                  <option value="other">Sonstiges</option>
-                </select>
-              </div>
-              
-              {editSocial?.platform === 'other' && (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">Benutzerdefinierte Platform</label>
-                  <Input
-                    placeholder="z.B. Mein Blog, Portfolio, Shop..."
-                    value={editCustomPlatform}
-                    onChange={e => setEditCustomPlatform(e.target.value)}
-                    className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
-                    required
-                  />
-                </div>
-              )}
-              
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">
-                  {editSocial.platform === 'email' ? 'E-Mail Adresse' : 
-                   editSocial.platform === 'phone' ? 'Telefonnummer' : 
-                   editSocial.platform === 'address' ? 'Adresse' : 'URL'}
-                </label>
-                <Input
-                  placeholder={
-                    editSocial.platform === 'email' ? 'beispiel@email.com' :
-                    editSocial.platform === 'phone' ? '+49 123 456789' :
-                    editSocial.platform === 'address' ? 'Musterstraße 123, 12345 Stadt' :
-                    'https://instagram.com/username'
-                  }
-                  value={editSocial.value}
-                  onChange={e => setEditSocial({ ...editSocial, value: e.target.value })}
-                  type={
-                    editSocial.platform === 'email' ? 'email' :
-                    editSocial.platform === 'phone' ? 'tel' :
-                    'url'
-                  }
-                  className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
-                  required
-                />
-              </div>
+          {editSocial && ( 
+                <form onSubmit={handleEditSocial} className="flex flex-col gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Platform</label>
+                    <select 
+                      value={editSocial.platform} 
+                      onChange={e => setEditSocial({ ...editSocial, platform: e.target.value })}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:border-purple-500 focus:ring-purple-500"
+                      required
+                    >
+                      <option value="instagram">Instagram</option>
+                      <option value="tiktok">TikTok</option>
+                      <option value="youtube">YouTube</option>
+                      <option value="twitter">Twitter</option>
+                      <option value="facebook">Facebook</option>
+                      <option value="linkedin">LinkedIn</option>
+                      <option value="snapchat">Snapchat</option>
+                      <option value="twitch">Twitch</option>
+                      <option value="discord">Discord</option>
+                      <option value="telegram">Telegram</option>
+                      <option value="whatsapp">WhatsApp</option>
+                      <option value="spotify">Spotify</option>
+                      <option value="apple">Apple Music</option>
+                      <option value="soundcloud">SoundCloud</option>
+                      <option value="pinterest">Pinterest</option>
+                      <option value="reddit">Reddit</option>
+                      <option value="github">GitHub</option>
+                      <option value="behance">Behance</option>
+                      <option value="dribbble">Dribbble</option>
+                      <option value="figma">Figma</option>
+                      <option value="notion">Notion</option>
+                      <option value="medium">Medium</option>
+                      <option value="substack">Substack</option>
+                      <option value="clubhouse">Clubhouse</option>
+                      <option value="signal">Signal</option>
+                      <option value="cameo">Cameo</option>
+                      <option value="buymeacoffee">Buy Me a Coffee</option>
+                      <option value="kofi">Ko-fi</option>
+                      <option value="patreon">Patreon</option>
+                      <option value="onlyfans">OnlyFans</option>
+                      <option value="producthunt">Product Hunt</option>
+                      <option value="appstore">App Store</option>
+                      <option value="googleplay">Google Play</option>
+                      <option value="website">Website</option>
+                      <option value="email">E-Mail</option>
+                      <option value="phone">Telefon</option>
+                      <option value="other">Sonstiges</option>
+                    </select>
+                  </div>
+                  
+                  {editSocial?.platform === 'other' && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Benutzerdefinierte Platform</label>
+                      <Input
+                        placeholder="z.B. Mein Blog, Portfolio, Shop..."
+                        value={editCustomPlatform}
+                        onChange={e => setEditCustomPlatform(e.target.value)}
+                        className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                        required
+                      />
+                    </div>
+                  )}
+
+                  {/* NEU: Kein Text/URL-Radio mehr für E-Mail und Telefon */}
+                  {(editSocial.platform === 'email' || editSocial.platform === 'phone') && null}
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      {editSocial.platform === 'email' ? 'E-Mail Adresse' : 
+                        editSocial.platform === 'phone' ? 'Telefonnummer' : 'URL'}
+                    </label>
+                    <Input
+                      placeholder={
+                        editSocial.platform === 'email' ? 'beispiel@email.com' :
+                        editSocial.platform === 'phone' ? '+49 123 456789' :
+                        'https://instagram.com/username'
+                      }
+                      value={editSocial.value}
+                      onChange={e => setEditSocial({ ...editSocial, value: e.target.value })}
+                      type="text"
+                      className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                      required
+                    />
+                  </div>
               {editError && (
                 <div className="text-red-500 text-sm bg-red-50 p-3 rounded-lg border border-red-200">
                   {editError}

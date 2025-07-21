@@ -2,7 +2,7 @@
 
 import React, { useCallback, useState, useRef, useMemo } from 'react'
 import { useDropzone } from 'react-dropzone'
-import { Upload, X, Crop, RotateCcw, Loader2, AlertCircle, CheckCircle } from 'lucide-react'
+import { Upload, X, Crop, RotateCcw, Loader2, AlertCircle, CheckCircle, Camera } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useUploadThing } from '@/lib/uploadthing'
 import { useDesign } from './DesignContext'
@@ -549,15 +549,14 @@ export function UploadAvatar({ onUploadComplete }: UploadAvatarProps) {
       if (croppedUploaded && croppedUploaded[0]) {
         const croppedImageUrl = croppedUploaded[0].ufsUrl;
         
-        // Update settings with new URLs (UploadThing router handles database update)
+        // Update settings with new URLs
         updateSettings({ 
           avatarImage: croppedImageUrl,
           originalAvatarImage: originalImageUrl
         });
+        await saveSettings();
         onUploadComplete?.(croppedImageUrl);
         
-        // Note: UploadThing router already updates the database
-        // No need to call saveSettings() here to avoid race conditions
         console.log('Avatar uploaded successfully:', { 
           cropped: croppedImageUrl, 
           original: originalImageUrl,
@@ -604,8 +603,7 @@ export function UploadAvatar({ onUploadComplete }: UploadAvatarProps) {
           avatarImage: '',
           originalAvatarImage: ''
         });
-        // Note: Delete API already updates the database
-        // No need to call saveSettings() here to avoid race conditions
+        await saveSettings();
         console.log('Avatar removed and deleted from UploadThing');
       } else {
         throw new Error('Failed to delete avatar');
@@ -628,29 +626,8 @@ export function UploadAvatar({ onUploadComplete }: UploadAvatarProps) {
   const handleAvatarShapeChange = async (shape: 'circle' | 'rectangle') => {
     try {
       console.log('Changing avatar shape to:', shape);
-      // Update settings immediately for instant UI feedback
       updateSettings({ avatarShape: shape });
-      
-      // Get userId from URL params
-      const pathSegments = window.location.pathname.split('/');
-      const userId = pathSegments[1]; // /[userId]/...
-      
-      // Save directly to database
-      const response = await fetch(`/api/user/design?userId=${userId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...settings,
-          avatarShape: shape
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to save avatar shape');
-      }
-
+      await saveSettings();
       console.log('Avatar shape saved successfully:', shape);
     } catch (error) {
       console.error('Error changing avatar shape:', error);
@@ -661,29 +638,8 @@ export function UploadAvatar({ onUploadComplete }: UploadAvatarProps) {
   const handleAvatarBorderColorChange = async (color: string) => {
     try {
       console.log('Changing avatar border color to:', color);
-      // Update settings immediately for instant UI feedback
       updateSettings({ avatarBorderColor: color });
-      
-      // Get userId from URL params
-      const pathSegments = window.location.pathname.split('/');
-      const userId = pathSegments[1]; // /[userId]/...
-      
-      // Save directly to database
-      const response = await fetch(`/api/user/design?userId=${userId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...settings,
-          avatarBorderColor: color
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to save avatar border color');
-      }
-
+      await saveSettings();
       console.log('Avatar border color saved successfully:', color);
     } catch (error) {
       console.error('Error changing avatar border color:', error);
@@ -706,79 +662,101 @@ export function UploadAvatar({ onUploadComplete }: UploadAvatarProps) {
   return (
     <>
       <div className="space-y-4">
-        {/* Avatar Preview Section */}
-        <div className="flex items-center gap-4">
-          <div
-            {...getRootProps()}
-            className={`w-20 h-20 border-2 border-dashed cursor-pointer flex items-center justify-center transition-colors ${
-              settings.avatarShape === 'circle' ? 'rounded-full' : 'rounded-lg'
-            } ${
-              isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
-            }`}
-          >
-            <input {...getInputProps()} />
-            {settings.avatarImage ? (
+        {/* Avatar Preview Section - Improved UX */}
+        <div className="flex items-start gap-6">
+          {/* Avatar Display - Larger and more prominent */}
+          <div className="flex-shrink-0">
+            <div className="relative">
               <div 
-                className={`w-full h-full ${
-                  settings.avatarShape === 'circle' ? 'rounded-full' : 'rounded-lg'
-                } overflow-hidden`}
-                style={{
-                  border: `3px solid ${settings.avatarBorderColor || '#ffffff'}`,
-                  borderRadius: settings.avatarShape === 'circle' ? '50%' : '8px'
-                }}
+                className={`w-24 h-24 border-2 border-gray-200 shadow-lg overflow-hidden ${
+                  settings.avatarShape === 'circle' ? 'rounded-full' : 'rounded-xl'
+                } bg-gray-100 flex items-center justify-center`}
               >
-                <img
-                  src={settings.avatarImage}
-                  alt="Avatar"
-                  className="w-full h-full object-cover"
-                />
+                {settings.avatarImage ? (
+                  <img
+                    src={settings.avatarImage}
+                    alt="Avatar"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <Camera className="w-12 h-12 text-gray-400" />
+                )}
               </div>
-            ) : (
-              <div className="text-center">
-                <Upload className="w-6 h-6 text-gray-400 mx-auto mb-1" />
-                <p className="text-xs text-gray-500">Foto hochladen</p>
-              </div>
-            )}
+              
+              {/* Upload overlay indicator */}
+              {!settings.avatarImage && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-full">
+                  <Upload className="w-8 h-8 text-white" />
+                </div>
+              )}
+            </div>
           </div>
-          
+
+          {/* Upload Area - Much larger and clearer */}
           <div className="flex-1">
-            <h3 className="text-sm font-medium text-gray-900 mb-1">Avatar</h3>
-            <p className="text-xs text-gray-500">
-              {settings.avatarImage ? 'Dein aktuelles Profilbild' : 'Lade dein Profilbild hoch'}
-            </p>
+            <div className="space-y-3">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-1">Profilbild</h3>
+                <p className="text-sm text-gray-600">
+                  {settings.avatarImage 
+                    ? 'Dein aktuelles Profilbild. Klicke zum Ändern.' 
+                    : 'Lade dein Profilbild hoch, um deine Seite zu personalisieren'
+                  }
+                </p>
+              </div>
+
+              {/* Compact Upload Button */}
+              <div
+                {...getRootProps()}
+                className={`w-full p-4 border-2 border-dashed rounded-lg cursor-pointer transition-all duration-200 flex items-center justify-center gap-3 bg-white hover:border-purple-400 ${
+                  isDragActive 
+                    ? 'border-purple-500 bg-purple-50' 
+                    : 'border-gray-300'
+                }`}
+              >
+                <input {...getInputProps()} />
+                <Camera className={`w-6 h-6 ${isDragActive ? 'text-purple-600' : 'text-gray-400'}`} />
+                <div className="text-left">
+                  <p className="text-sm font-medium text-gray-700">
+                    {isDragActive ? 'Datei hier ablegen' : 'Foto hochladen oder ziehen'}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    JPG, PNG, WebP oder GIF • Max. 10MB
+                  </p>
+                </div>
+              </div>
+
+              {/* Quick Actions - Only show if avatar exists */}
+              {settings.avatarImage && (
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={removeAvatar}
+                    className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                    disabled={uploadStatus.isActive}
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Entfernen
+                  </Button>
+                  
+                  {settings.originalAvatarImage && settings.originalAvatarImage !== settings.avatarImage && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={restoreOriginal}
+                      className="flex-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
+                      disabled={uploadStatus.isActive}
+                    >
+                      <RotateCcw className="w-4 h-4 mr-2" />
+                      Original wiederherstellen
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
-
-
-
-        {/* Action Buttons - Only show if avatar exists */}
-        {settings.avatarImage && (
-          <div className="flex gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={removeAvatar}
-              className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50"
-              disabled={uploadStatus.isActive}
-            >
-              <X className="w-4 h-4 mr-2" />
-              Entfernen
-            </Button>
-            
-            {settings.originalAvatarImage && settings.originalAvatarImage !== settings.avatarImage && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={restoreOriginal}
-                className="flex-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                disabled={uploadStatus.isActive}
-              >
-                <RotateCcw className="w-4 h-4 mr-2" />
-                Original
-              </Button>
-            )}
-          </div>
-        )}
       </div>
 
       {/* Best Practice: Error Display */}
@@ -922,10 +900,9 @@ export function UploadBackground({ onUploadComplete }: UploadBackgroundProps) {
           backgroundImage: imageUrl,
           backgroundType: 'image'
         });
+        await saveSettings();
         onUploadComplete?.(imageUrl);
         
-        // Note: UploadThing router already updates the database
-        // No need to call saveSettings() here to avoid race conditions
         console.log('Background uploaded successfully:', imageUrl);
       }
     } catch (error) {
@@ -968,8 +945,7 @@ export function UploadBackground({ onUploadComplete }: UploadBackgroundProps) {
           backgroundImage: '',
           backgroundType: 'color'
         });
-        // Note: Delete API already updates the database
-        // No need to call saveSettings() here to avoid race conditions
+        await saveSettings();
         console.log('Background removed and deleted from UploadThing');
       } else {
         throw new Error('Failed to delete background');

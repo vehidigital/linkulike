@@ -79,6 +79,7 @@ export async function GET(request: NextRequest) {
     console.log('Original Avatar URL from database:', user.originalAvatarUrl);
     console.log('Avatar Shape from database:', user.avatarShape);
     console.log('Avatar Border Color from database:', user.avatarBorderColor);
+    console.log('Background Color from database:', user.backgroundColor);
 
     // Transform to match our frontend interface - only use fields that exist in the schema
     const designSettings = {
@@ -96,9 +97,9 @@ export async function GET(request: NextRequest) {
       buttonTextColor: user.buttonTextColor || '#ffffff',
       useCustomButtonTextColor: user.useCustomButtonTextColor || false,
       selectedFont: user.fontFamily || 'Inter',
-      socialPosition: 'bottom' as const,
+      socialPosition: (user.socialPosition as 'top' | 'middle' | 'bottom') || 'bottom',
       showBranding: user.showBranding !== undefined && user.showBranding !== null ? user.showBranding : true,
-      showShareButton: true,
+      showShareButton: user.showShareButton !== undefined && user.showShareButton !== null ? user.showShareButton : false,
       backgroundType: user.backgroundImageActive ? 'image' : 'color',
       backgroundImage: user.backgroundImageUrl || '',
       backgroundColor: user.backgroundColor || '#1e3a8a',
@@ -207,33 +208,34 @@ export async function PUT(request: NextRequest) {
 
     // Prepare update data - only use fields that exist in the schema
     const updateData: any = {}
-    
-    // Only update fields that are actually provided
-    if (displayName !== undefined) updateData.displayName = displayName || null
-    if (bio !== undefined) updateData.bio = bio || null
-    if (avatarImage !== undefined) updateData.avatarUrl = avatarImage || null
-    if (originalAvatarImage !== undefined) updateData.originalAvatarUrl = originalAvatarImage || null
-    if (avatarShape !== undefined) updateData.avatarShape = avatarShape || 'circle'
-    if (avatarBorderColor !== undefined) updateData.avatarBorderColor = avatarBorderColor || '#ffffff'
-    if (selectedTheme !== undefined) updateData.theme = selectedTheme || 'basics'
-    if (buttonStyle !== undefined) updateData.buttonStyle = buttonStyle || 'filled'
-    if (buttonColor !== undefined) updateData.buttonColor = buttonColor || '#000000'
-    if (buttonGradient !== undefined) updateData.buttonGradient = buttonGradient || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-    if (buttonTextColor !== undefined) updateData.buttonTextColor = buttonTextColor || '#ffffff'
-    if (useCustomButtonTextColor !== undefined) updateData.useCustomButtonTextColor = useCustomButtonTextColor || false
-    if (selectedFont !== undefined) updateData.fontFamily = selectedFont || 'Inter'
-    if (backgroundColor !== undefined) updateData.backgroundColor = backgroundColor || '#1e3a8a'
-    if (backgroundImage !== undefined) updateData.backgroundImageUrl = backgroundImage || null
+    // Nur wenn Wert !== undefined, dann speichern. Leere Strings werden zu null.
+    if (displayName !== undefined) updateData.displayName = displayName === '' ? null : displayName
+    if (bio !== undefined) updateData.bio = bio === '' ? null : bio
+    if (avatarImage !== undefined) updateData.avatarUrl = avatarImage === '' ? null : avatarImage
+    if (originalAvatarImage !== undefined) updateData.originalAvatarUrl = originalAvatarImage === '' ? null : originalAvatarImage
+    if (avatarShape !== undefined) updateData.avatarShape = avatarShape
+    if (avatarBorderColor !== undefined) updateData.avatarBorderColor = avatarBorderColor
+    if (selectedTheme !== undefined) updateData.theme = selectedTheme
+    if (buttonStyle !== undefined) updateData.buttonStyle = buttonStyle
+    if (buttonColor !== undefined) updateData.buttonColor = buttonColor
+    if (buttonGradient !== undefined) updateData.buttonGradient = buttonGradient
+    if (buttonTextColor !== undefined) updateData.buttonTextColor = buttonTextColor
+    if (useCustomButtonTextColor !== undefined) updateData.useCustomButtonTextColor = useCustomButtonTextColor
+    if (selectedFont !== undefined) updateData.fontFamily = selectedFont
+    if (backgroundColor !== undefined) updateData.backgroundColor = backgroundColor
+    if (backgroundImage !== undefined) updateData.backgroundImageUrl = backgroundImage === '' ? null : backgroundImage
     if (backgroundType !== undefined) updateData.backgroundImageActive = backgroundType === 'image'
-    if (textColor !== undefined) updateData.textColor = textColor || '#ffffff'
-    if (backgroundOverlayType !== undefined) updateData.backgroundOverlayType = backgroundOverlayType || 'dark'
-    if (backgroundOverlayColor !== undefined) updateData.backgroundOverlayColor = backgroundOverlayColor || '#000000'
-    if (backgroundOverlayOpacity !== undefined) updateData.backgroundOverlayOpacity = backgroundOverlayOpacity || 0.2
-    if (displayNameColor !== undefined) updateData.displayNameColor = displayNameColor || '#ffffff'
-    if (bioColor !== undefined) updateData.bioColor = bioColor || '#ffffff'
-    if (usernameColor !== undefined) updateData.usernameColor = usernameColor || '#ffffff'
-    if (footerColor !== undefined) updateData.footerColor = footerColor || '#ffffff'
-    if (showBranding !== undefined) updateData.showBranding = showBranding !== undefined ? showBranding : true
+    if (textColor !== undefined) updateData.textColor = textColor
+    if (backgroundOverlayType !== undefined) updateData.backgroundOverlayType = backgroundOverlayType
+    if (backgroundOverlayColor !== undefined) updateData.backgroundOverlayColor = backgroundOverlayColor
+    if (backgroundOverlayOpacity !== undefined) updateData.backgroundOverlayOpacity = backgroundOverlayOpacity
+    if (displayNameColor !== undefined) updateData.displayNameColor = displayNameColor
+    if (bioColor !== undefined) updateData.bioColor = bioColor
+    if (usernameColor !== undefined) updateData.usernameColor = usernameColor
+    if (footerColor !== undefined) updateData.footerColor = footerColor
+    if (showBranding !== undefined) updateData.showBranding = showBranding
+    if (socialPosition !== undefined) updateData.socialPosition = socialPosition
+    if (showShareButton !== undefined) updateData.showShareButton = showShareButton
 
     console.log('Updating user with data:', updateData)
     console.log('Avatar border color being saved:', avatarBorderColor)
@@ -251,6 +253,7 @@ export async function PUT(request: NextRequest) {
       console.log('Updated avatar border color in database:', updatedUser.avatarBorderColor)
       console.log('Updated displayName in database:', updatedUser.displayName)
       console.log('Updated bio in database:', updatedUser.bio)
+      console.log('Updated backgroundColor in database:', updatedUser.backgroundColor)
       return NextResponse.json({ success: true, user: updatedUser })
     } catch (dbError) {
       console.error('Database update error:', dbError)

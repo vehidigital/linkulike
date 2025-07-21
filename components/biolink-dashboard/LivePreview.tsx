@@ -8,7 +8,7 @@ import { Upload } from "lucide-react";
 import { getThemeTemplate } from "@/lib/theme-templates";
 import { getContrastColor } from "@/lib/color-utils";
 import { socialPlatforms } from "@/lib/social-icons";
-import { Share2, Instagram, Youtube, Facebook, Twitter, Linkedin, Github, Link as LinkIcon, Music, MessageCircle, Twitch, Apple, ShoppingBag, BookOpen, Figma, Dribbble, Mail, Club, Signal, Camera, Coffee, Gift, Globe, Phone, MapPin } from "lucide-react";
+import { Share2, Instagram, Youtube, Facebook, Twitter, Linkedin, Github, Link as LinkIcon, Music, MessageCircle, Twitch, Apple, ShoppingBag, BookOpen, Figma, Dribbble, Mail, Club, Signal, Camera, Coffee, Gift, Globe, Phone, MapPin, User } from "lucide-react";
 import { Star, Sparkles, Zap, Heart, Crown } from "lucide-react";
 import { useParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
@@ -32,6 +32,40 @@ interface Link {
 
 export function LivePreview({ reloadLinks, reloadSocials, isCompact = false }: { reloadLinks?: number, reloadSocials?: number, isCompact?: boolean }) {
   const { settings } = useDesign();
+  
+  // Debug: Log settings changes
+  useEffect(() => {
+    console.log('🎨 LivePreview settings updated:', {
+      backgroundColor: settings.backgroundColor,
+      avatarBorderColor: settings.avatarBorderColor,
+      backgroundType: settings.backgroundType,
+      selectedTheme: settings.selectedTheme,
+      isCustomTheme: settings.isCustomTheme,
+      selectedFont: settings.selectedFont,
+      buttonColor: settings.buttonColor,
+      buttonTextColor: settings.buttonTextColor,
+      textColor: settings.textColor,
+      socialPosition: settings.socialPosition,
+      showBranding: settings.showBranding,
+      showShareButton: settings.showShareButton
+    });
+  }, [settings]);
+  
+  // Debug: Log when component re-renders
+  console.log('🎨 LivePreview re-rendering with settings:', {
+    backgroundColor: settings.backgroundColor,
+    avatarBorderColor: settings.avatarBorderColor,
+    backgroundType: settings.backgroundType,
+    selectedTheme: settings.selectedTheme,
+    isCustomTheme: settings.isCustomTheme,
+    selectedFont: settings.selectedFont,
+    buttonColor: settings.buttonColor,
+    buttonTextColor: settings.buttonTextColor,
+    textColor: settings.textColor,
+    socialPosition: settings.socialPosition,
+    showBranding: settings.showBranding,
+    showShareButton: settings.showShareButton
+  });
   
   const [links, setLinks] = useState<Link[]>([]);
   const [loading, setLoading] = useState(true);
@@ -138,8 +172,42 @@ export function LivePreview({ reloadLinks, reloadSocials, isCompact = false }: {
   const getBackgroundStyle = () => {
     const theme = getThemeTemplate(settings.selectedTheme);
     
+    console.log('🎨 getBackgroundStyle called with:', {
+      backgroundType: settings.backgroundType,
+      backgroundColor: settings.backgroundColor,
+      selectedTheme: settings.selectedTheme,
+      isCustomTheme: settings.isCustomTheme,
+      theme: theme?.id
+    });
+    
+    // Always use custom settings if backgroundType is explicitly set
+    if (settings.backgroundType) {
+      switch (settings.backgroundType) {
+        case 'image':
+          console.log('🎨 Using image background:', settings.backgroundImage);
+          return {
+            backgroundImage: `url("${settings.backgroundImage}")`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center'
+          };
+        case 'color':
+          console.log('🎨 Using color background:', settings.backgroundColor);
+          return {
+            backgroundColor: settings.backgroundColor || '#1e3a8a'
+          };
+        case 'video':
+          console.log('🎨 Using video background');
+          return {
+            backgroundColor: '#000000', // Platzhalter für Video
+          };
+        default:
+          break;
+      }
+    }
+    
     // If using a predefined theme (not custom), use theme background
     if (theme && !settings.isCustomTheme) {
+      console.log('🎨 Using theme background:', theme.id);
       if (theme.styles.backgroundGradient) {
         return {
           background: theme.styles.backgroundGradient,
@@ -151,43 +219,39 @@ export function LivePreview({ reloadLinks, reloadSocials, isCompact = false }: {
       }
     }
     
-    // Otherwise use custom settings
-    switch (settings.backgroundType) {
-      case 'image':
-        return {
-          backgroundImage: `url("${settings.backgroundImage}")`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center'
-        };
-      case 'color':
-        return {
-          backgroundColor: settings.backgroundColor
-        };
-      case 'video':
-        return {
-          backgroundColor: '#000000', // Platzhalter für Video
-        };
-      default:
-        // Standard: heller Hintergrund
-        return {
-          backgroundColor: '#ffffff'
-        };
-    }
+    // Fallback: use custom background color
+    console.log('🎨 Using fallback background color:', settings.backgroundColor);
+    return {
+      backgroundColor: settings.backgroundColor || '#1e3a8a'
+    };
   };
 
   const getTextColor = () => {
     const theme = getThemeTemplate(settings.selectedTheme);
     
+    console.log('🎨 getTextColor called with:', {
+      textColor: settings.textColor,
+      selectedTheme: settings.selectedTheme,
+      isCustomTheme: settings.isCustomTheme,
+      themeTextColor: theme?.styles.textColor
+    });
+    
     // If using a predefined theme (not custom), use theme text color
     if (theme && !settings.isCustomTheme) {
+      console.log('🎨 Using theme text color:', theme.styles.textColor);
       return theme.styles.textColor || '#000000';
     }
     
     // Otherwise use custom settings
+    console.log('🎨 Using custom text color:', settings.textColor);
     return settings.textColor || '#000000'; // Standard: schwarzer Text
   };
 
   const getFontFamily = () => {
+    console.log('🎨 getFontFamily called with:', {
+      selectedFont: settings.selectedFont
+    });
+    
     // Mapping für alle Standardfonts
     const fontMap: Record<string, string> = {
       'system-ui, Arial, Helvetica, sans-serif': 'system-ui, Arial, Helvetica, sans-serif',
@@ -200,18 +264,40 @@ export function LivePreview({ reloadLinks, reloadSocials, isCompact = false }: {
       'Courier New, Courier, monospace': 'Courier New, Courier, monospace',
       'Arial Rounded MT Bold, system-ui, sans-serif': 'Arial Rounded MT Bold, system-ui, sans-serif',
       'Comic Sans MS, Comic Sans, cursive, sans-serif': 'Comic Sans MS, Comic Sans, cursive, sans-serif',
+      'Inter': 'Inter, system-ui, Arial, Helvetica, sans-serif',
+      'Roboto': 'Roboto, system-ui, Arial, Helvetica, sans-serif',
+      'Open Sans': 'Open Sans, system-ui, Arial, Helvetica, sans-serif',
+      'Lato': 'Lato, system-ui, Arial, Helvetica, sans-serif',
+      'Poppins': 'Poppins, system-ui, Arial, Helvetica, sans-serif',
+      'Montserrat': 'Montserrat, system-ui, Arial, Helvetica, sans-serif',
+      'Source Sans Pro': 'Source Sans Pro, system-ui, Arial, Helvetica, sans-serif',
+      'Raleway': 'Raleway, system-ui, Arial, Helvetica, sans-serif',
+      'Ubuntu': 'Ubuntu, system-ui, Arial, Helvetica, sans-serif',
+      'Nunito': 'Nunito, system-ui, Arial, Helvetica, sans-serif',
     };
     if (settings.selectedFont && fontMap[settings.selectedFont]) {
+      console.log('🎨 Using mapped font:', fontMap[settings.selectedFont]);
       return fontMap[settings.selectedFont];
     }
+    console.log('🎨 Using default font');
     return 'system-ui, Arial, Helvetica, sans-serif';
   };
 
   const getButtonStyle = () => {
     const theme = getThemeTemplate(settings.selectedTheme);
     
+    console.log('🎨 getButtonStyle called with:', {
+      buttonStyle: settings.buttonStyle,
+      buttonColor: settings.buttonColor,
+      buttonTextColor: settings.buttonTextColor,
+      useCustomButtonTextColor: settings.useCustomButtonTextColor,
+      selectedTheme: settings.selectedTheme,
+      isCustomTheme: settings.isCustomTheme
+    });
+    
     // If using a predefined theme (not custom), use theme button style
     if (theme && !settings.isCustomTheme) {
+      console.log('🎨 Using theme button style:', theme.id);
       if (theme.styles.buttonStyle === 'filled') {
         return {
           backgroundColor: theme.styles.buttonColor || '#000000',
@@ -232,9 +318,10 @@ export function LivePreview({ reloadLinks, reloadSocials, isCompact = false }: {
     }
     
     // Otherwise use custom settings
+    console.log('🎨 Using custom button style:', settings.buttonStyle);
     if (settings.buttonStyle === 'filled') {
       return {
-        backgroundColor: settings.buttonColor,
+        backgroundColor: settings.buttonColor || '#000000',
         color: settings.useCustomButtonTextColor
           ? (settings.buttonTextColor || '#ffffff')
           : getContrastColor(settings.buttonColor || '#000000')
@@ -242,10 +329,10 @@ export function LivePreview({ reloadLinks, reloadSocials, isCompact = false }: {
     } else if (settings.buttonStyle === 'outlined') {
       return {
         backgroundColor: 'transparent',
-        border: `2px solid ${settings.buttonColor}`,
+        border: `2px solid ${settings.buttonColor || '#000000'}`,
         color: settings.useCustomButtonTextColor
-          ? (settings.buttonTextColor || '#ffffff')
-          : getContrastColor(settings.buttonColor || '#000000')
+          ? (settings.buttonTextColor || '#000000')
+          : (settings.buttonColor || '#000000')
       };
     } else if (settings.buttonStyle === 'gradient') {
       // Handle gradient button style
@@ -258,10 +345,10 @@ export function LivePreview({ reloadLinks, reloadSocials, isCompact = false }: {
     } else {
       // Fallback: immer wie 'filled'
       return {
-        backgroundColor: settings.buttonColor,
+        backgroundColor: settings.buttonColor || '#000000',
         color: settings.useCustomButtonTextColor
           ? (settings.buttonTextColor || '#ffffff')
-          : getContrastColor(settings.buttonColor || '#000000')
+          : '#ffffff' // Default white text for dark backgrounds
       };
     }
   };
@@ -384,7 +471,7 @@ export function LivePreview({ reloadLinks, reloadSocials, isCompact = false }: {
               // URL: Direkter Link
               const getContactIcon = () => {
                 switch (s.platform) {
-                  case 'email': return '📧';
+                  case 'email': return <Mail className="w-5 h-5 text-pink-500" />;
                   case 'phone': return '📞';
                   case 'address': return '📍';
                   default: return '🔗';
@@ -418,7 +505,7 @@ export function LivePreview({ reloadLinks, reloadSocials, isCompact = false }: {
               
               const getContactIcon = () => {
                 switch (s.platform) {
-                  case 'email': return '📧';
+                  case 'email': return <Mail className="w-5 h-5 text-pink-500" />;
                   case 'phone': return '📞';
                   case 'address': return '📍';
                   default: return '🔗';
@@ -463,13 +550,13 @@ export function LivePreview({ reloadLinks, reloadSocials, isCompact = false }: {
         return (
           <>
             {/* First row */}
-            <div className="flex justify-center gap-3 mb-3" style={{ maxWidth: 'fit-content', margin: '0 auto' }}>
+            <div className="flex justify-center gap-5 mb-3 w-fit min-w-[120px] mx-auto">
               {socials.slice(0, firstRowCount).map((s, index) => renderIcon(s, index))}
             </div>
             
             {/* Second row (if needed) */}
             {secondRowCount > 0 && (
-              <div className="flex justify-center gap-3" style={{ maxWidth: 'fit-content', margin: '0 auto' }}>
+              <div className="flex justify-center gap-5 w-fit min-w-[120px] mx-auto">
                 {socials.slice(firstRowCount, firstRowCount + secondRowCount).map((s, index) => renderIcon(s, firstRowCount + index))}
               </div>
             )}
@@ -529,8 +616,8 @@ export function LivePreview({ reloadLinks, reloadSocials, isCompact = false }: {
             border: `3px solid ${settings.avatarBorderColor || '#ffffff'}`
           }}>
             <AvatarImage src={userData?.avatarUrl || settings.avatarImage} />
-            <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-white font-bold text-sm">
-              {(settings.displayName || userData?.displayName) ? (settings.displayName || userData?.displayName)?.slice(0, 2).toUpperCase() : 'U'}
+            <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-white font-bold text-sm flex items-center justify-center">
+              <User className="w-8 h-8 text-white/80" />
             </AvatarFallback>
           </Avatar>
           
@@ -576,7 +663,7 @@ export function LivePreview({ reloadLinks, reloadSocials, isCompact = false }: {
                 target="_blank"
                 rel="noopener noreferrer"
                 className={`block w-full py-2 px-3 rounded-lg font-medium text-center shadow-md transition-all duration-200 hover:scale-105 flex items-center justify-center gap-1 ${link.highlight ? getHighlightClasses(link.highlightStyle) : ''}`}
-                style={getButtonStyle()}
+                style={{ ...getButtonStyle(), fontFamily: getFontFamily() }}
               >
                 {link.highlight && getHighlightIcon(link.highlightStyle)}
                 <span className="text-xs">{link.title}</span>
@@ -649,8 +736,8 @@ export function LivePreview({ reloadLinks, reloadSocials, isCompact = false }: {
                 border: `4px solid ${settings.avatarBorderColor || '#ffffff'}`
               }}>
                 <AvatarImage src={userData?.avatarUrl || settings.avatarImage} />
-                <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-white font-bold">
-                  {(settings.displayName || userData?.displayName) ? (settings.displayName || userData?.displayName)?.slice(0, 2).toUpperCase() : 'U'}
+                <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-white font-bold flex items-center justify-center">
+                  <User className="w-10 h-10 text-white/80" />
                 </AvatarFallback>
               </Avatar>
               
