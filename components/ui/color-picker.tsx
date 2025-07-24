@@ -182,13 +182,13 @@ export function ColorPicker({
               aria-label="Hex-Farbcode eingeben"
               maxLength={7}
             />
-            <button
-              onClick={copyToClipboard}
-              className="p-2 hover:bg-gray-200 rounded transition-colors"
-              title="Farbe kopieren"
-            >
-              <Copy className={cn("w-4 h-4", copied ? "text-green-600" : "text-gray-500")} />
-            </button>
+              <button
+                onClick={copyToClipboard}
+                className="p-2 hover:bg-gray-200 rounded transition-colors"
+                title="Farbe kopieren"
+              >
+                <Copy className={cn("w-4 h-4", copied ? "text-green-600" : "text-gray-500")} />
+              </button>
             {showContrastWarning && hasLowContrast(customColor) && (
               <AlertTriangle className="w-4 h-4 text-amber-600 ml-1" />
             )}

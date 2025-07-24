@@ -13,6 +13,22 @@ import { Star, Sparkles, Zap, Heart, Crown } from "lucide-react";
 import { useParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { eventEmitter, EVENTS } from "@/lib/events";
+import { ProfileView } from '@/components/ProfileView';
+import { SocialIcon } from 'react-social-icons';
+
+function getCustomSocialIcon(url: string) {
+  if (url.includes('onlyfans.com')) {
+    return (
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#00AFF0"/><path d="M23.5 13.5c0 3.59-2.91 6.5-6.5 6.5s-6.5-2.91-6.5-6.5 2.91-6.5 6.5-6.5 6.5 2.91 6.5 6.5zm-6.5 3.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7z" fill="#fff"/></svg>
+    );
+  }
+  if (url.includes('telegram.me') || url.includes('t.me')) {
+    return (
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#0088CC"/><path d="M23.5 10.5l-2.5 11c-.2.8-.7 1-1.4.6l-3.8-2.8-1.8.9c-.2.1-.4 0-.5-.2l-.5-1.7-2.1-.7c-.7-.2-.7-.7.1-1l12-4.7c.6-.2 1 .1.8.8z" fill="#fff"/></svg>
+    );
+  }
+  return null;
+}
 
 interface Social {
   id: string;
@@ -332,7 +348,7 @@ export function LivePreview({ reloadLinks, reloadSocials, isCompact = false }: {
         border: `2px solid ${settings.buttonColor || '#000000'}`,
         color: settings.useCustomButtonTextColor
           ? (settings.buttonTextColor || '#000000')
-          : (settings.buttonColor || '#000000')
+          : getContrastColor(settings.buttonColor || '#000000')
       };
     } else if (settings.buttonStyle === 'gradient') {
       // Handle gradient button style
@@ -427,398 +443,80 @@ export function LivePreview({ reloadLinks, reloadSocials, isCompact = false }: {
 
   // Social-Icons-Element (intelligente symmetrische Verteilung)
   const SocialIconsBar = socials.length > 0 ? (
-    <div className="max-w-xs mx-auto relative">
+    <div className="max-w-xs mx-auto relative px-12 pt-4 pb-12">
       {(() => {
         const totalIcons = socials.length;
-        
-        // Intelligente Verteilung für perfekte Symmetrie
-        let firstRowCount, secondRowCount;
-        
-        if (totalIcons <= 3) {
-          // 1-3 Icons: Alle in eine Reihe
-          firstRowCount = totalIcons;
-          secondRowCount = 0;
-        } else if (totalIcons === 4) {
-          // 4 Icons: 2+2
-          firstRowCount = 2;
-          secondRowCount = 2;
-        } else if (totalIcons === 5) {
-          // 5 Icons: 3+2
-          firstRowCount = 3;
-          secondRowCount = 2;
-        } else if (totalIcons === 6) {
-          // 6 Icons: 3+3
-          firstRowCount = 3;
-          secondRowCount = 3;
-        } else if (totalIcons === 7) {
-          // 7 Icons: 4+3 (symmetrischer als 3+3+1)
-          firstRowCount = 4;
-          secondRowCount = 3;
-        } else {
-          // 8+ Icons: 4+4
-          firstRowCount = 4;
-          secondRowCount = Math.min(4, totalIcons - 4);
-        }
-        
-        const renderIcon = (s: any, index: number) => {
-          const isContactInfo = ['email', 'phone', 'address'].includes(s.platform);
-          
-          if (isContactInfo) {
-            // Verwende das isUrl Flag aus der Datenbank
-            const isUrl = s.isUrl || s.value.startsWith('http://') || s.value.startsWith('https://') || s.value.startsWith('mailto:') || s.value.startsWith('tel:');
-            
-            if (isUrl) {
-              // URL: Direkter Link
-              const getContactIcon = () => {
-                switch (s.platform) {
-                  case 'email': return <Mail className="w-5 h-5 text-pink-500" />;
-                  case 'phone': return '📞';
-                  case 'address': return '📍';
-                  default: return '🔗';
-                }
-              };
-              
-              return (
-                <a
-                  key={s.id}
-                  href={s.value}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-lg flex items-center justify-center hover:scale-110 transition-transform duration-200 w-10 h-10"
-                  title={s.platform}
-                >
-                  <span className="text-lg">{getContactIcon()}</span>
-                </a>
-              );
-            } else {
-              // Text: Infobox öffnen
-              const handleClick = (e: React.MouseEvent) => {
-                e.preventDefault();
-                const rect = e.currentTarget.getBoundingClientRect();
-                setInfoBox({
-                  type: s.platform,
-                  content: s.value,
-                  x: rect.left + rect.width / 2,
-                  y: rect.top - 10
-                });
-              };
-              
-              const getContactIcon = () => {
-                switch (s.platform) {
-                  case 'email': return <Mail className="w-5 h-5 text-pink-500" />;
-                  case 'phone': return '📞';
-                  case 'address': return '📍';
-                  default: return '🔗';
-                }
-              };
-              
-              return (
-                <button
-                  key={s.id}
-                  onClick={handleClick}
-                  className="bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-lg flex items-center justify-center hover:scale-110 transition-transform duration-200 w-10 h-10"
-                  title={s.platform}
-                >
-                  <span className="text-lg">{getContactIcon()}</span>
-                </button>
-              );
-            }
-          }
-          
-          // Normale Social Media Links
-          const socialPlatform = socialPlatforms.find(sp => sp.value === s.platform);
-          if (socialPlatform && socialPlatform.icon.startsWith('<svg')) {
-            return (
-              <a key={s.id} href={s.value} target="_blank" rel="noopener noreferrer" className="bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-lg flex items-center justify-center hover:scale-110 transition-transform duration-200 w-10 h-10" title={s.platform}>
-                <div 
-                  className="w-5 h-5"
-                  style={{ color: socialPlatform.color }}
-                  dangerouslySetInnerHTML={{ __html: socialPlatform.icon }}
-                />
-              </a>
-            );
-          }
-          
-          const Icon = socialIcons[s.platform as keyof typeof socialIcons] || LinkIcon;
-          return (
-            <a key={s.id} href={s.value} target="_blank" rel="noopener noreferrer" className="bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-lg flex items-center justify-center hover:scale-110 transition-transform duration-200 w-10 h-10" title={s.platform}>
-              <Icon className="w-5 h-5" />
-            </a>
-          );
-        };
-        
+        const iconsPerRow = Math.min(4, totalIcons);
         return (
-          <>
-            {/* First row */}
-            <div className="flex justify-center gap-5 mb-3 w-fit min-w-[120px] mx-auto">
-              {socials.slice(0, firstRowCount).map((s, index) => renderIcon(s, index))}
-            </div>
-            
-            {/* Second row (if needed) */}
-            {secondRowCount > 0 && (
-              <div className="flex justify-center gap-5 w-fit min-w-[120px] mx-auto">
-                {socials.slice(firstRowCount, firstRowCount + secondRowCount).map((s, index) => renderIcon(s, firstRowCount + index))}
-              </div>
-            )}
-            
-            {/* InfoBox */}
-            {infoBox && (
-              <div 
-                className="absolute z-50 bg-white/95 backdrop-blur-md rounded-lg shadow-xl border border-gray-200/50 p-3 max-w-xs"
-                style={{
-                  left: `${infoBox.x}px`,
-                  top: `${infoBox.y}px`,
-                  transform: 'translateX(-50%) translateY(-100%)'
-                }}
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-lg">
-                    {infoBox.type === 'email' ? '📧' : 
-                     infoBox.type === 'phone' ? '📞' : '📍'}
-                  </span>
-                  <span className="font-semibold text-sm capitalize">
-                    {infoBox.type === 'email' ? 'E-Mail' : 
-                     infoBox.type === 'phone' ? 'Telefon' : 'Adresse'}
-                  </span>
-                </div>
-                <p className="text-sm text-gray-700 break-words">{infoBox.content}</p>
-                <button
-                  onClick={() => setInfoBox(null)}
-                  className="absolute top-1 right-1 text-gray-400 hover:text-gray-600"
-                >
-                  ✕
-                </button>
-              </div>
-            )}
-          </>
+          <div
+            className={`grid justify-center gap-8 ${iconsPerRow === 1 ? 'grid-cols-1' : iconsPerRow === 2 ? 'grid-cols-2' : iconsPerRow === 3 ? 'grid-cols-3' : 'grid-cols-4'}`}
+            style={{ width: '100%' }}
+          >
+            {socials.map((s) => (
+              <a key={s.id} href={s.value} target="_blank" rel="noopener noreferrer" className="bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-lg flex items-center justify-center hover:scale-110 transition-transform duration-200 w-8 h-8" title={s.platform}>
+                <SocialIcon url={s.value} network={s.platform} style={{ width: 22, height: 22 }} bgColor="#fff" fgColor="#222" />
+              </a>
+            ))}
+          </div>
         );
       })()}
+      {/* InfoBox */}
+      {infoBox && (
+        <div 
+          className="absolute z-50 bg-white/95 backdrop-blur-md rounded-lg shadow-xl border border-gray-200/50 p-3 max-w-xs"
+          style={{
+            left: `${infoBox.x}px`,
+            top: `${infoBox.y}px`,
+            transform: 'translateX(-50%) translateY(-100%)'
+          }}
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-lg">
+              {infoBox.type === 'email' ? '📧' : 
+               infoBox.type === 'phone' ? '📞' : '📍'}
+            </span>
+            <span className="font-semibold text-sm capitalize">
+              {infoBox.type === 'email' ? 'E-Mail' : 
+               infoBox.type === 'phone' ? 'Telefon' : 'Adresse'}
+            </span>
+          </div>
+          <p className="text-sm text-gray-700 break-words">{infoBox.content}</p>
+          <button
+            onClick={() => setInfoBox(null)}
+            className="absolute top-1 right-1 text-gray-400 hover:text-gray-600"
+          >
+            ✕
+          </button>
+        </div>
+      )}
     </div>
   ) : null;
 
   // Kompakter Modus für das Layout
   if (isCompact) {
+    // Hole userId aus userData (username oder id), Fallback auf 'demo'
+    const userId = userData?.username || userData?.id || 'demo';
     return (
-      <div className="w-full h-full flex flex-col items-center justify-between overflow-hidden" style={getBackgroundStyle()}>
-        <div className="flex flex-col items-center w-full px-4 pt-8 pb-2 flex-1">
-          {/* Socials oben - vor dem Avatar */}
-          {settings.socialPosition === 'top' && (
-            <div className="mb-6">
-              {SocialIconsBar}
-            </div>
-          )}
-          
-          {/* Avatar, Name, Bio */}
-          <Avatar className={`w-16 h-16 mb-3 mt-2 ${
-            settings.avatarShape === 'circle' ? 'rounded-full' : 'rounded-lg'
-          }`}
-          style={{
-            border: `3px solid ${settings.avatarBorderColor || '#ffffff'}`
-          }}>
-            <AvatarImage src={userData?.avatarUrl || settings.avatarImage} />
-            <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-white font-bold text-sm flex items-center justify-center">
-              <User className="w-8 h-8 text-white/80" />
-            </AvatarFallback>
-          </Avatar>
-          
-          <h1 className="text-lg font-bold mb-1 text-center" style={{ fontFamily: getFontFamily(), color: getTextColor() }}>
-            {settings.displayName || userData?.displayName || 'Dein Name'}
-          </h1>
-          
-          <p className="text-xs mb-3 text-center opacity-90" style={{ fontFamily: getFontFamily(), color: getTextColor() }}>
-            {settings.bio || userData?.bio || 'Deine Bio'}
-          </p>
-          
-          {/* Socials in der Mitte - nach der Bio */}
-          {settings.socialPosition === 'middle' && (
-            <div className="mb-3">
-              {SocialIconsBar}
-            </div>
-          )}
-          
-          {/* Dynamische Links */}
-          <div className="flex flex-col gap-2 w-full max-w-[280px] mt-2">
-            {loading && (
-              <div className="text-center py-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mx-auto mb-1"></div>
-                <p className="text-gray-600 text-xs">Lade...</p>
-              </div>
-            )}
-            
-            {!loading && links.length === 0 && (
-              <div className="text-center py-4">
-                <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                  </svg>
-                </div>
-                <p className="text-gray-500 text-xs">Keine Links</p>
-              </div>
-            )}
-            
-            {!loading && links.map(link => (
-              <a
-                key={link.id}
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`block w-full py-2 px-3 rounded-lg font-medium text-center shadow-md transition-all duration-200 hover:scale-105 flex items-center justify-center gap-1 ${link.highlight ? getHighlightClasses(link.highlightStyle) : ''}`}
-                style={{ ...getButtonStyle(), fontFamily: getFontFamily() }}
-              >
-                {link.highlight && getHighlightIcon(link.highlightStyle)}
-                <span className="text-xs">{link.title}</span>
-              </a>
-            ))}
-          </div>
+      <div className="flex justify-center items-center min-h-screen bg-neutral-100">
+        <div className="relative w-[400px] h-[850px] rounded-[2.5rem] shadow-2xl border-4 border-black overflow-hidden">
+          <iframe
+            src={`/${userId}?preview=1`}
+            className="w-full h-full"
+            style={{ border: 'none', borderRadius: '2.5rem' }}
+            sandbox="allow-scripts allow-same-origin"
+          />
         </div>
-        
-        {/* Socials unten - vor dem Branding */}
-        {settings.socialPosition === 'bottom' && (
-          <div className="mb-4">
-            {SocialIconsBar}
-          </div>
-        )}
-        
-        {/* Branding immer ganz unten */}
-        {settings.showBranding && (
-          <div
-            className="px-2 py-1 rounded select-none flex items-center justify-center mb-2"
-            style={{
-              background: 'rgba(255,255,255,0.9)',
-              backdropFilter: 'blur(10px)',
-              fontWeight: 700,
-              fontSize: '0.75rem',
-              letterSpacing: '0.1em',
-              color: '#222',
-              textShadow: '0 1px 4px rgba(0,0,0,0.15)',
-            }}
-          >
-            LINKULIKE
-          </div>
-        )}
       </div>
     );
   }
 
-  // Normaler Modus
+  // Standard-Modus: ProfileView verwenden
   return (
-    <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-gray-200/50 p-6 flex flex-col gap-4">
-      <div className="text-center mb-2">
-        <h3 className="text-lg font-bold text-gray-900">Live Vorschau</h3>
-        <p className="text-sm text-gray-600">So sieht dein Profil aus</p>
-      </div>
-      
-      {/* Phone Frame mit Preview */}
-      <div className="flex justify-center">
-        <div className="relative bg-black rounded-[2.5rem] shadow-2xl border-4 border-black p-0 w-[340px] h-[700px] flex flex-col items-center justify-between overflow-hidden">
-          {/* Share-Button oben links */}
-          {settings.showShareButton && (
-            <button className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-lg z-10 hover:scale-110 transition-transform duration-200">
-              <Share2 className="w-5 h-5 text-purple-600" />
-            </button>
-          )}
-          
-          {/* Phone-Display-Inhalt */}
-          <div className="flex-1 flex flex-col items-center justify-between w-full h-full relative" style={getBackgroundStyle()}>
-            <div className="flex flex-col items-center w-full px-6 pt-12 pb-4 flex-1">
-              {/* Socials oben - vor dem Avatar */}
-              {settings.socialPosition === 'top' && (
-                <div className="mb-6">
-                  {SocialIconsBar}
-                </div>
-              )}
-              
-              {/* Avatar, Name, Bio */}
-              <Avatar className={`w-20 h-20 mb-4 ${
-                settings.avatarShape === 'circle' ? 'rounded-full' : 'rounded-lg'
-              }`}
-              style={{
-                border: `4px solid ${settings.avatarBorderColor || '#ffffff'}`
-              }}>
-                <AvatarImage src={userData?.avatarUrl || settings.avatarImage} />
-                <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-white font-bold flex items-center justify-center">
-                  <User className="w-10 h-10 text-white/80" />
-                </AvatarFallback>
-              </Avatar>
-              
-              <h1 className="text-xl font-bold mb-2 text-center" style={{ fontFamily: getFontFamily(), color: getTextColor() }}>
-                {settings.displayName || userData?.displayName || 'Dein Name'}
-              </h1>
-              
-              <p className="text-sm mb-4 text-center opacity-90" style={{ fontFamily: getFontFamily(), color: getTextColor() }}>
-                {settings.bio || userData?.bio || 'Deine Bio'}
-              </p>
-              
-              {/* Socials in der Mitte - nach der Bio */}
-              {settings.socialPosition === 'middle' && (
-                <div className="mb-4">
-                  {SocialIconsBar}
-                </div>
-              )}
-              
-              {/* Dynamische Links */}
-              <div className="flex flex-col gap-3 w-full max-w-xs mt-4">
-                {loading && (
-                  <div className="text-center py-4">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-600 mx-auto mb-2"></div>
-                    <p className="text-gray-600 text-sm">Lade Links...</p>
-                  </div>
-                )}
-                
-                {!loading && links.length === 0 && (
-                  <div className="text-center py-8">
-                    <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                      </svg>
-                    </div>
-                    <p className="text-gray-500 text-sm">Noch keine Links vorhanden</p>
-                  </div>
-                )}
-                
-                {!loading && links.map(link => (
-                  <a
-                    key={link.id}
-                    href={link.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`block w-full py-3 px-4 rounded-full font-semibold text-center shadow-lg transition-all duration-200 hover:scale-105 flex items-center justify-center gap-2 ${link.highlight ? getHighlightClasses(link.highlightStyle) : ''}`}
-                    style={getButtonStyle()}
-                  >
-                    {link.highlight && getHighlightIcon(link.highlightStyle)}
-                    {link.title}
-                  </a>
-                ))}
-              </div>
-            </div>
-            
-            {/* Socials unten - vor dem Branding */}
-            {settings.socialPosition === 'bottom' && (
-              <div className="mb-4">
-                {SocialIconsBar}
-              </div>
-            )}
-            
-            {/* Branding immer ganz unten */}
-            {settings.showBranding && (
-              <div
-                className="px-4 py-1 rounded-lg select-none flex items-center justify-center"
-                style={{
-                  background: 'rgba(255,255,255,0.9)',
-                  backdropFilter: 'blur(10px)',
-                  fontWeight: 700,
-                  fontSize: '1rem',
-                  letterSpacing: '0.15em',
-                  color: '#222',
-                  textShadow: '0 1px 4px rgba(0,0,0,0.15)',
-                }}
-              >
-                LINKULIKE
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
+    <ProfileView
+      userData={userData}
+      links={links}
+      socials={socials}
+      settings={settings}
+    />
   );
 } 

@@ -27,8 +27,8 @@ export function AddLinkCard({ onLinkAdded }: { onLinkAdded?: () => void }) {
     setIsSubmitting(true);
     setError(null);
     try {
-      const url = `/api/links?userId=${userId}`;
-      const res = await fetch(url, {
+      const apiUrl = `/api/links?userId=${userId}`;
+      const res = await fetch(apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, url, highlight, highlightStyle }),

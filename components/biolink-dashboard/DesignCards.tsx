@@ -8,13 +8,14 @@ import { Switch } from "@/components/ui/switch";
 import { useDesign } from "./DesignContext";
 import { UploadAvatar, UploadBackground } from "./UploadComponents";
 import { themeTemplates, applyThemeToSettings } from "@/lib/theme-templates";
-import { Play, Check, X, Camera, Palette, User } from "lucide-react";
+import { Play, Check, X, Camera, Palette, User, Edit2, Loader2, CheckCircle2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ColorPicker } from "@/components/ui/color-picker";
+import { ThemePhonePreview } from './ThemePhonePreview';
 const AVATAR_BORDER_COLORS = [
   '#000000', '#ffffff', '#f59e0b', '#3b82f6', '#ef4444', '#10b981', '#8b5cf6', '#ec4899'
 ];
@@ -149,20 +150,52 @@ export function ProfileCard() {
       <div className="flex flex-row gap-8 items-start">
         {/* Linke Seite: Name & Bio */}
         <div className="flex-1 flex flex-col gap-6 justify-center">
-          <input
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-100 text-lg font-medium focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            placeholder="Anzeigename"
-            value={tempName}
-            onChange={e => handleNameChange(e.target.value)}
-            maxLength={NAME_LIMIT}
-          />
-          <textarea
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-100 text-base font-normal focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent min-h-[48px]"
-            placeholder="Bio (optional)"
-            value={tempBio}
-            onChange={e => handleBioChange(e.target.value)}
-            maxLength={BIO_LIMIT}
-          />
+          <div className="relative w-full">
+            <input
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-100 text-lg font-medium focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-16"
+              placeholder="Anzeigename"
+              value={tempName}
+              onChange={e => handleNameChange(e.target.value)}
+              maxLength={NAME_LIMIT}
+              readOnly={!isEditingName}
+              onFocus={() => setIsEditingName(true)}
+            />
+            {/* Zeichenzähler für Name */}
+            <div className={`absolute right-4 top-1/2 -translate-y-1/2 text-xs ${tempName.length >= NAME_LIMIT ? 'text-red-500' : 'text-gray-400'}`} style={{ top: '80%' }}>
+              {tempName.length} / {NAME_LIMIT}
+            </div>
+            {isEditingName ? (
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 flex gap-2">
+                <button onClick={handleNameSave} className="text-green-600 hover:bg-green-100 rounded p-1"><Check size={18} /></button>
+                <button onClick={handleNameCancel} className="text-red-600 hover:bg-red-100 rounded p-1 ml-1"><X size={18} /></button>
+              </span>
+            ) : (
+              <button onClick={() => setIsEditingName(true)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-purple-500"><Edit2 size={18} /></button>
+            )}
+          </div>
+          <div className="relative w-full">
+            <textarea
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-100 text-base font-normal focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent min-h-[48px] pr-16"
+              placeholder="Bio (optional)"
+              value={tempBio}
+              onChange={e => handleBioChange(e.target.value)}
+              maxLength={BIO_LIMIT}
+              readOnly={!isEditingBio}
+              onFocus={() => setIsEditingBio(true)}
+            />
+            {/* Zeichenzähler für Bio */}
+            <div className={`absolute right-4 top-1/2 -translate-y-1/2 text-xs ${tempBio.length >= BIO_LIMIT ? 'text-red-500' : 'text-gray-400'}`} style={{ top: '80%' }}>
+              {tempBio.length} / {BIO_LIMIT}
+            </div>
+            {isEditingBio ? (
+              <span className="absolute right-3 top-2 flex gap-2">
+                <button onClick={handleBioSave} className="text-green-600 hover:bg-green-100 rounded p-1"><Check size={18} /></button>
+                <button onClick={handleBioCancel} className="text-red-600 hover:bg-red-100 rounded p-1 ml-1"><X size={18} /></button>
+              </span>
+            ) : (
+              <button onClick={() => setIsEditingBio(true)} className="absolute right-3 top-2 text-gray-400 hover:text-purple-500"><Edit2 size={18} /></button>
+            )}
+          </div>
         </div>
         {/* Rechte Seite: Avatar Upload */}
         <div className="flex flex-col items-center gap-4">
@@ -195,8 +228,8 @@ export function ProfileCard() {
             />
             <div className="flex gap-2 mt-2">
               {AVATAR_BORDER_COLORS.map(color => (
-                <button
-                  key={color}
+                    <button
+                      key={color}
                   type="button"
                   onClick={async () => {
                     updateSettings({ avatarBorderColor: color });
@@ -215,8 +248,8 @@ export function ProfileCard() {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Format</label>
           <div className="flex gap-2">
-            <button type="button" onClick={async () => { updateSettings({ avatarShape: 'circle' }); updatePreview({ avatarShape: 'circle' }); await saveSettings(); }} className={`w-10 h-10 rounded-full border-2 ${settings.avatarShape === 'circle' ? 'border-pink-500' : 'border-gray-200'}`}></button>
-            <button type="button" onClick={async () => { updateSettings({ avatarShape: 'rectangle' }); updatePreview({ avatarShape: 'rectangle' }); await saveSettings(); }} className={`w-10 h-10 rounded-lg border-2 ${settings.avatarShape === 'rectangle' ? 'border-pink-500' : 'border-gray-200'}`}></button>
+            <button type="button" onClick={async () => { updateSettings({ avatarShape: 'circle' }); updatePreview({ avatarShape: 'circle' }); await saveSettings({ avatarShape: 'circle' }); }} className={`w-10 h-10 rounded-full border-2 ${settings.avatarShape === 'circle' ? 'border-pink-500' : 'border-gray-200'}`}></button>
+            <button type="button" onClick={async () => { updateSettings({ avatarShape: 'rectangle' }); updatePreview({ avatarShape: 'rectangle' }); await saveSettings({ avatarShape: 'rectangle' }); }} className={`w-10 h-10 rounded-lg border-2 ${settings.avatarShape === 'rectangle' ? 'border-pink-500' : 'border-gray-200'}`}></button>
           </div>
         </div>
       </div>
@@ -367,16 +400,19 @@ export function ThemesCard() {
   const handleThemeSelect = async (themeId: string) => {
     try {
       if (themeId === 'create-your-own') {
-        updateSettings({ selectedTheme: themeId, isCustomTheme: true });
-        updatePreview({ selectedTheme: themeId, isCustomTheme: true });
+        console.log('Theme: Create your own selected');
+        updateSettings({ selectedTheme: themeId });
+        updatePreview({ selectedTheme: themeId });
+        await saveSettings({ selectedTheme: themeId });
       } else {
         const themeSettings = applyThemeToSettings(themeId);
         if (themeSettings) {
           updateSettings({ ...themeSettings, isCustomTheme: false });
           updatePreview({ ...themeSettings, isCustomTheme: false });
+          await saveSettings(themeSettings);
         }
       }
-      await saveSettings();
+      console.log('Theme selection saved:', themeId);
     } catch (error) {
       console.error('Error saving theme settings:', error);
     }
@@ -391,9 +427,10 @@ export function ThemesCard() {
             key={theme.id}
             onClick={() => handleThemeSelect(theme.id)}
             className={`p-3 rounded-xl border-2 ${settings.selectedTheme === theme.id ? 'border-pink-500' : 'border-gray-200'} bg-gray-50 flex flex-col items-center gap-2 hover:scale-[1.03] transition-transform`}
+            style={{ fontFamily: theme.styles.fontFamily || 'Inter' }}
           >
-            <div className={`w-full h-10 rounded ${theme.preview} mb-1 flex items-center justify-center`}></div>
-            <span className="text-xs font-semibold">{theme.name}</span>
+            <ThemePhonePreview theme={theme} displayName={settings.displayName} bio={settings.bio} />
+            <span className="text-xs font-semibold mt-1">{theme.name}</span>
           </button>
         ))}
       </div>
@@ -664,14 +701,23 @@ export function SocialPositionCard() {
 
 export function BrandingCard() {
   const { settings, updateSettings, saveSettings } = useDesign();
+  const [isSaving, setIsSaving] = useState(false);
+  const [success, setSuccess] = useState(false);
 
-  const handleUpdate = async (updates: Partial<typeof settings>) => {
+  const handleToggle = async () => {
+    setIsSaving(true);
+    setSuccess(false);
+    const newValue = !settings.showBranding;
+    updateSettings({ showBranding: newValue });
     try {
-      updateSettings(updates);
-      await saveSettings();
-      console.log('Branding settings saved:', updates);
+      await saveSettings({ showBranding: newValue });
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 1200);
+      console.log('Branding settings saved:', { showBranding: newValue });
     } catch (error) {
       console.error('Error saving branding settings:', error);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -679,12 +725,15 @@ export function BrandingCard() {
     <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 flex flex-col gap-4">
       <div className="text-lg font-bold mb-2">Branding</div>
       <div className="flex items-center space-x-2">
-        <Checkbox 
-          id="branding" 
-          checked={settings.showBranding} 
-          onCheckedChange={(checked) => handleUpdate({ showBranding: checked as boolean })}
+        <Checkbox
+          id="branding"
+          checked={!!settings.showBranding}
+          onCheckedChange={handleToggle}
+          disabled={isSaving}
         />
         <Label htmlFor="branding">Show "Powered by Linkulike"</Label>
+        {isSaving && <Loader2 className="w-4 h-4 animate-spin text-purple-500 ml-2" />}
+        {success && !isSaving && <CheckCircle2 className="w-4 h-4 text-green-500 ml-2" />}
       </div>
     </div>
   );
@@ -692,14 +741,23 @@ export function BrandingCard() {
 
 export function ShareButtonCard() {
   const { settings, updateSettings, saveSettings } = useDesign();
+  const [isSaving, setIsSaving] = useState(false);
+  const [success, setSuccess] = useState(false);
 
-  const handleUpdate = async (updates: Partial<typeof settings>) => {
+  const handleToggle = async () => {
+    setIsSaving(true);
+    setSuccess(false);
+    const newValue = !settings.showShareButton;
+    updateSettings({ showShareButton: newValue });
     try {
-      updateSettings(updates);
-      await saveSettings();
-      console.log('Share button settings saved:', updates);
+      await saveSettings({ showShareButton: newValue });
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 1200);
+      console.log('Share button settings saved:', { showShareButton: newValue });
     } catch (error) {
       console.error('Error saving share button settings:', error);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -709,10 +767,13 @@ export function ShareButtonCard() {
       <div className="flex items-center space-x-2">
         <Checkbox 
           id="share" 
-          checked={settings.showShareButton} 
-          onCheckedChange={(checked) => handleUpdate({ showShareButton: checked as boolean })}
+          checked={!!settings.showShareButton} 
+          onCheckedChange={handleToggle}
+          disabled={isSaving}
         />
         <Label htmlFor="share">Show share button</Label>
+        {isSaving && <Loader2 className="w-4 h-4 animate-spin text-purple-500 ml-2" />}
+        {success && !isSaving && <CheckCircle2 className="w-4 h-4 text-green-500 ml-2" />}
       </div>
     </div>
   );

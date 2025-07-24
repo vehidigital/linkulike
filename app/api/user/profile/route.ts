@@ -58,11 +58,21 @@ export async function GET(request: NextRequest) {
     
     // If no user from session, try userId from params
     if (!user && userId) {
-      user = await prisma.user.findUnique({ 
-        where: { id: userId },
-        select: { id: true, email: true, username: true, displayName: true, bio: true, avatarUrl: true }
-      });
-      console.log('[PROFILE] User found via userId:', !!user, user?.id);
+      // Prüfe, ob userId wie eine echte User-ID aussieht (z.B. Prisma/CUID oder UUID), sonst als Username behandeln
+      const isLikelyId = /^[a-zA-Z0-9_-]{16,}$/.test(userId);
+      if (isLikelyId) {
+        user = await prisma.user.findUnique({ 
+          where: { id: userId },
+          select: { id: true, email: true, username: true, displayName: true, bio: true, avatarUrl: true }
+        });
+        console.log('[PROFILE] User found via userId:', !!user, user?.id);
+      } else {
+        user = await prisma.user.findUnique({
+          where: { username: userId },
+          select: { id: true, email: true, username: true, displayName: true, bio: true, avatarUrl: true }
+        });
+        console.log('[PROFILE] User found via username:', !!user, user?.username);
+      }
     }
     
     if (!user) {

@@ -30,15 +30,29 @@ export async function GET(request: NextRequest) {
     
     // If no user from session, try userId from params
     if (!user && userId) {
-      user = await prisma.user.findUnique({
-        where: { id: userId },
-        include: {
-          socials: {
-            orderBy: { position: "asc" },
+      // Prüfe, ob userId wie eine echte User-ID aussieht (z.B. Prisma/CUID oder UUID), sonst als Username behandeln
+      const isLikelyId = /^[a-zA-Z0-9_-]{16,}$/.test(userId);
+      if (isLikelyId) {
+        user = await prisma.user.findUnique({
+          where: { id: userId },
+          include: {
+            socials: {
+              orderBy: { position: "asc" },
+            },
           },
-        },
-      });
-      console.log('[SOCIALS] User found via userId:', !!user, user?.id);
+        });
+        console.log('[SOCIALS] User found via userId:', !!user, user?.id);
+      } else {
+        user = await prisma.user.findUnique({
+          where: { username: userId },
+          include: {
+            socials: {
+              orderBy: { position: "asc" },
+            },
+          },
+        });
+        console.log('[SOCIALS] User found via username:', !!user, user?.username);
+      }
     }
 
     if (!user) {

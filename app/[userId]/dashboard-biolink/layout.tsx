@@ -11,6 +11,7 @@ import { LivePreview } from "@/components/biolink-dashboard/LivePreview"
 import { useSession, signOut } from "next-auth/react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Logo } from '@/components/Logo';
 
 const TABS = [
   { label: "Links", path: "links" },
@@ -108,10 +109,7 @@ export default function DashboardBiolinkLayout({ children }: { children: React.R
         <header className="w-full sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-200/50 shadow-sm flex items-center justify-between px-4 md:px-12 h-16">
           {/* Logo links */}
           <Link href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold text-lg">L</span>
-            </div>
-            <span className="font-bold text-2xl bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">linkulike</span>
+            <Logo size={40} textSize={24} withText={true} />
           </Link>
           {/* Actions rechts */}
           <div className="flex items-center gap-4">
@@ -178,35 +176,20 @@ export default function DashboardBiolinkLayout({ children }: { children: React.R
         
         {/* BIO.LINK LAYOUT: Preview links, Content rechts */}
         <div className="max-w-7xl mx-auto px-4 md:px-8 lg:px-12 py-6 flex gap-8 min-h-[calc(100vh-64px)]">
-          {/* Linke Spalte: Live Preview mit Smartphone-Rahmen */}
+          {/* Linke Spalte: Live Preview ohne Smartphone-Rahmen */}
           <div className="w-96 flex-shrink-0">
             <div className="sticky top-24">
               <div className="bg-white/80 backdrop-blur-md border border-gray-200/50 rounded-xl p-4 shadow-sm">
                 <h3 className="text-sm font-semibold text-gray-700 mb-3">Preview</h3>
                 <div className="flex justify-center">
-                  {/* Smartphone-Rahmen */}
-                  <div className="w-72 h-[540px] bg-black rounded-[3rem] p-1 shadow-2xl relative">
-                    {/* Notch */}
-                    <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-32 h-6 bg-black rounded-b-2xl z-10"></div>
-                    
-                    {/* Lautsprecher */}
-                    <div className="absolute top-2 left-1/2 transform -translate-x-1/2 w-16 h-1 bg-gray-800 rounded-full z-20"></div>
-                    
-                    {/* Kamera */}
-                    <div className="absolute top-3 right-8 w-3 h-3 bg-gray-800 rounded-full z-20"></div>
-                    
-                    {/* Screen mit LivePreview */}
-                    <div className="w-full h-full bg-white rounded-[2.5rem] overflow-hidden relative">
-                      {/* LivePreview Content */}
-                      <div className="h-full overflow-hidden">
-                        <LivePreview 
-                          key={`preview-${reloadLinks}-${reloadSocials}-${Date.now()}`}
-                          reloadLinks={reloadLinks} 
-                          reloadSocials={reloadSocials}
-                          isCompact={true}
-                        />
-                      </div>
-                    </div>
+                  {/* Nur noch LivePreview Content, kein Mockup mehr */}
+                  <div className="w-full flex justify-center">
+                    <LivePreview 
+                      key={`preview-${reloadLinks}-${reloadSocials}-${Date.now()}`}
+                      reloadLinks={reloadLinks} 
+                      reloadSocials={reloadSocials}
+                      isCompact={false}
+                    />
                   </div>
                 </div>
               </div>

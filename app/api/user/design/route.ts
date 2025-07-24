@@ -15,27 +15,31 @@ export async function GET(request: NextRequest) {
     
     // Try to get user by userId
     if (userId) {
-      try {
-        console.log('[DESIGN] Searching for user with userId:', userId);
+      // Prüfe, ob userId wie eine echte User-ID aussieht (z.B. Prisma/CUID oder UUID), sonst als Username behandeln
+      const isLikelyId = /^[a-zA-Z0-9_-]{16,}$/.test(userId);
+      if (isLikelyId) {
         user = await prisma.user.findUnique({
           where: { id: userId },
         });
         console.log('[DESIGN] User found via userId:', !!user, user?.displayName);
-        if (user) {
-          console.log('[DESIGN] User data:', {
-            displayName: user.displayName,
-            bio: user.bio,
-            avatarUrl: user.avatarUrl,
-            theme: user.theme,
-            backgroundColor: user.backgroundColor,
-            buttonStyle: user.buttonStyle,
-            buttonColor: user.buttonColor,
-            textColor: user.textColor,
-            fontFamily: user.fontFamily,
-          });
-        }
-      } catch (error) {
-        console.error('[DESIGN] Error finding user via userId:', error);
+      } else {
+        user = await prisma.user.findUnique({
+          where: { username: userId },
+        });
+        console.log('[DESIGN] User found via username:', !!user, user?.username);
+      }
+      if (user) {
+        console.log('[DESIGN] User data:', {
+          displayName: user.displayName,
+          bio: user.bio,
+          avatarUrl: user.avatarUrl,
+          theme: user.theme,
+          backgroundColor: user.backgroundColor,
+          buttonStyle: user.buttonStyle,
+          buttonColor: user.buttonColor,
+          textColor: user.textColor,
+          fontFamily: user.fontFamily,
+        });
       }
     }
 
@@ -98,7 +102,7 @@ export async function GET(request: NextRequest) {
       useCustomButtonTextColor: user.useCustomButtonTextColor || false,
       selectedFont: user.fontFamily || 'Inter',
       socialPosition: (user.socialPosition as 'top' | 'middle' | 'bottom') || 'bottom',
-      showBranding: user.showBranding !== undefined && user.showBranding !== null ? user.showBranding : true,
+      showBranding: user.showBranding,
       showShareButton: user.showShareButton !== undefined && user.showShareButton !== null ? user.showShareButton : false,
       backgroundType: user.backgroundImageActive ? 'image' : 'color',
       backgroundImage: user.backgroundImageUrl || '',
@@ -112,7 +116,7 @@ export async function GET(request: NextRequest) {
       usernameColor: user.usernameColor || '#ffffff',
       footerColor: user.footerColor || '#ffffff',
     }
-
+    console.log('GET: showBranding from DB:', user.showBranding, typeof user.showBranding);
     console.log('Returning design settings:', designSettings)
     console.log('Final avatarImage value:', designSettings.avatarImage)
     console.log('=== DESIGN API GET END ===')
@@ -175,6 +179,7 @@ export async function PUT(request: NextRequest) {
     console.log('BODY (PUT):', body)
     console.log('BODY displayName:', body.displayName)
     console.log('BODY bio:', body.bio)
+    console.log('BODY showBranding:', body.showBranding, typeof body.showBranding)
     
     const {
       displayName,
@@ -238,6 +243,7 @@ export async function PUT(request: NextRequest) {
     if (showShareButton !== undefined) updateData.showShareButton = showShareButton
 
     console.log('Updating user with data:', updateData)
+    console.log('updateData.showBranding:', updateData.showBranding, typeof updateData.showBranding)
     console.log('Avatar border color being saved:', avatarBorderColor)
     console.log('displayName being saved:', updateData.displayName)
     console.log('bio being saved:', updateData.bio)
@@ -249,12 +255,16 @@ export async function PUT(request: NextRequest) {
         data: updateData
       })
 
+      // Direkt nach dem Update: User nochmal auslesen und showBranding loggen
+      const freshUser = await prisma.user.findUnique({ where: { id: user.id } });
+      console.log('showBranding in DB nach Update:', freshUser?.showBranding, typeof freshUser?.showBranding);
+
       console.log('User updated successfully:', updatedUser.id)
       console.log('Updated avatar border color in database:', updatedUser.avatarBorderColor)
       console.log('Updated displayName in database:', updatedUser.displayName)
       console.log('Updated bio in database:', updatedUser.bio)
       console.log('Updated backgroundColor in database:', updatedUser.backgroundColor)
-      return NextResponse.json({ success: true, user: updatedUser })
+      return NextResponse.json({ success: true, user: freshUser })
     } catch (dbError) {
       console.error('Database update error:', dbError)
       console.error('Error details:', {

@@ -53,6 +53,7 @@
     "react-dom": "18.3.1",
     "react-dropzone": "^14.3.8",
     "react-easy-crop": "^5.5.0",
+    "react-social-icons": "^6.24.0",
     "shadcn-ui": "^0.9.5",
     "tailwind-merge": "^3.3.1",
     "uploadthing": "^7.7.3",

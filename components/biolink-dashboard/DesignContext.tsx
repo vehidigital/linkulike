@@ -96,17 +96,18 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       const url = `/api/user/design?userId=${userId}`;
       const response = await fetch(url)
       if (response.ok) {
-        const data = await response.json()
-        console.log('Loaded design settings from API:', data);
-        console.log('API GET: avatarBorderColor =', data.avatarBorderColor);
+        const data = await response.json();
+        const settings = data.user || data;
+        console.log('Loaded design settings from API:', settings);
+        console.log('API GET: avatarBorderColor =', settings.avatarBorderColor);
         // Ensure isCustomTheme is properly set based on selectedTheme
-        const isCustomTheme = data.selectedTheme === 'create-your-own'
-        const loadedSettings = { 
-          ...defaultSettings, 
-          ...data,
+        const isCustomTheme = settings.selectedTheme === 'create-your-own';
+        const loadedSettings = {
+          ...defaultSettings,
+          ...settings,
           isCustomTheme: isCustomTheme,
-          useCustomButtonTextColor: !!data.useCustomButtonTextColor, // Fix: immer Boolean
-          showBranding: (data.showBranding === undefined || data.showBranding === null) ? true : data.showBranding // Fallback: immer true, außer explizit false
+          useCustomButtonTextColor: !!settings.useCustomButtonTextColor, // Fix: immer Boolean
+          showBranding: (settings.showBranding === undefined || settings.showBranding === null) ? true : settings.showBranding // Fallback: immer true, außer explizit false
         };
         setPreviewSettings(loadedSettings);
         setSavedSettings(loadedSettings);
@@ -215,7 +216,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       }
       const result = await response.json();
       console.log('💾 Design settings saved successfully:', result);
-      setSavedSettings({ ...settingsToSave });
+      // Nach dem Speichern: Settings aus der API neu laden, um Race Conditions zu vermeiden
+      await loadSettings();
       setIsSaving(false);
       return result;
     } catch (error) {
