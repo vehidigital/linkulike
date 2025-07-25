@@ -19,6 +19,9 @@ import { ThemePhonePreview } from './ThemePhonePreview';
 import { BackgroundUpload } from "./BackgroundUpload";
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useParams } from 'next/navigation';
+import { AvatarUploadModal } from './AvatarUploadModal';
+import { AvatarUploadSimple } from './AvatarUploadSimple';
+import { AvatarUploadWizard } from './AvatarUploadWizard';
 const AVATAR_BORDER_COLORS = [
   '#000000', '#ffffff', '#f59e0b', '#3b82f6', '#ef4444', '#10b981', '#8b5cf6', '#ec4899'
 ];
@@ -30,6 +33,7 @@ export function ProfileCard() {
   const { settings, updateSettings, updatePreview, resetPreview, saveSettings } = useDesign();
   const params = useParams();
   const userId = params.userId as string;
+  const [wizardOpen, setWizardOpen] = useState(false);
   
   // Local state for editing
   const [isEditingName, setIsEditingName] = useState(false);
@@ -38,6 +42,7 @@ export function ProfileCard() {
   const [tempBio, setTempBio] = useState(settings.bio || '');
   const [originalName, setOriginalName] = useState(settings.displayName || '');
   const [originalBio, setOriginalBio] = useState(settings.bio || '');
+  const [avatarModalOpen, setAvatarModalOpen] = useState(false);
   
   // Limits
   const NAME_LIMIT = 30;
@@ -152,13 +157,14 @@ export function ProfileCard() {
         <h3 className="text-xl font-bold text-gray-900">Profil</h3>
         <p className="text-sm text-gray-600">Deine persönlichen Informationen</p>
       </div>
-      <div className="flex flex-row gap-8 items-start">
-        {/* Linke Seite: Name & Bio */}
-        <div className="flex-1 flex flex-col gap-6 justify-center">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Linke Seite: Name & Bio - nimmt 2/3 der Breite */}
+        <div className="lg:col-span-2 flex flex-col gap-6">
           <div className="relative w-full">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Anzeigename</label>
             <input
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-100 text-lg font-medium focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-16"
-              placeholder="Anzeigename"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-100 text-lg font-medium focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-20"
+              placeholder="Dein Name"
               value={tempName}
               onChange={e => handleNameChange(e.target.value)}
               maxLength={NAME_LIMIT}
@@ -166,7 +172,7 @@ export function ProfileCard() {
               onFocus={() => setIsEditingName(true)}
             />
             {/* Zeichenzähler für Name */}
-            <div className={`absolute right-4 top-1/2 -translate-y-1/2 text-xs ${tempName.length >= NAME_LIMIT ? 'text-red-500' : 'text-gray-400'}`} style={{ top: '80%' }}>
+            <div className={`absolute right-4 top-1/2 -translate-y-1/2 text-xs ${tempName.length >= NAME_LIMIT ? 'text-red-500' : 'text-gray-400'}`} style={{ top: '50%' }}>
               {tempName.length} / {NAME_LIMIT}
             </div>
             {isEditingName ? (
@@ -179,9 +185,10 @@ export function ProfileCard() {
             )}
           </div>
           <div className="relative w-full">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Bio</label>
             <textarea
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-100 text-base font-normal focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent min-h-[48px] pr-16"
-              placeholder="Bio (optional)"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-100 text-base font-normal focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent min-h-[120px] pr-20 resize-none"
+              placeholder="Erzähle etwas über dich..."
               value={tempBio}
               onChange={e => handleBioChange(e.target.value)}
               maxLength={BIO_LIMIT}
@@ -189,76 +196,112 @@ export function ProfileCard() {
               onFocus={() => setIsEditingBio(true)}
             />
             {/* Zeichenzähler für Bio */}
-            <div className={`absolute right-4 top-1/2 -translate-y-1/2 text-xs ${tempBio.length >= BIO_LIMIT ? 'text-red-500' : 'text-gray-400'}`} style={{ top: '80%' }}>
+            <div className={`absolute right-4 bottom-4 text-xs ${tempBio.length >= BIO_LIMIT ? 'text-red-500' : 'text-gray-400'}`}>
               {tempBio.length} / {BIO_LIMIT}
             </div>
             {isEditingBio ? (
-              <span className="absolute right-3 top-2 flex gap-2">
+              <span className="absolute right-3 top-3 flex gap-2">
                 <button onClick={handleBioSave} className="text-green-600 hover:bg-green-100 rounded p-1"><Check size={18} /></button>
                 <button onClick={handleBioCancel} className="text-red-600 hover:bg-red-100 rounded p-1 ml-1"><X size={18} /></button>
               </span>
             ) : (
-              <button onClick={() => setIsEditingBio(true)} className="absolute right-3 top-2 text-gray-400 hover:text-purple-500"><Edit2 size={18} /></button>
+              <button onClick={() => setIsEditingBio(true)} className="absolute right-3 top-3 text-gray-400 hover:text-purple-500"><Edit2 size={18} /></button>
             )}
           </div>
         </div>
-        {/* Rechte Seite: Avatar Upload */}
-        <div className="flex flex-col items-center gap-4">
-          <AvatarUpload
+        {/* Rechte Seite: Avatar Upload (Wizard) + Randfarbe - nimmt 1/3 der Breite */}
+        <div className="flex flex-col items-center gap-4 lg:items-start">
+          <div className="relative group">
+            <div className={`relative w-32 h-32 ${settings.avatarShape === 'circle' ? 'rounded-full' : 'rounded-lg'} border-4 flex items-center justify-center overflow-hidden transition-all duration-200 group-hover:shadow-lg cursor-pointer`} style={{ borderColor: settings.avatarBorderColor || '#e5e7eb' }} onClick={() => setWizardOpen(true)}>
+              {settings.avatarImage ? (
+                <>
+                  <img
+                    src={settings.avatarImage}
+                    alt="Avatar Preview"
+                    className={`w-full h-full object-cover ${settings.avatarShape === 'circle' ? 'rounded-full' : 'rounded-lg'}`}
+                  />
+                  <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <Camera className="w-8 h-8 text-white" />
+                  </div>
+                </>
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center bg-gray-100 gap-2">
+                  <Camera className="w-10 h-10 text-gray-400" />
+                  <span className="text-xs text-gray-500 text-center">Avatar hinzufügen</span>
+                </div>
+              )}
+            </div>
+          </div>
+          {/* Avatar-Einstellungen */}
+          <div className="w-full space-y-3">
+            <div className="flex gap-2 items-center">
+              <span className="text-xs text-gray-500">Randfarbe:</span>
+              <ColorPicker
+                value={settings.avatarBorderColor || '#e5e7eb'}
+                onChange={async color => {
+                  updateSettings({ avatarBorderColor: color });
+                  updatePreview({ avatarBorderColor: color });
+                  await saveSettings({ avatarBorderColor: color });
+                }}
+                variant="bubble"
+                size="sm"
+              />
+              <div className="w-5 h-5 rounded-full border border-gray-300" style={{ background: settings.avatarBorderColor || '#e5e7eb' }} />
+            </div>
+            <div className="flex gap-2 items-center">
+              <span className="text-xs text-gray-500">Form:</span>
+              <button
+                type="button"
+                onClick={async () => {
+                  updateSettings({ avatarShape: 'circle' });
+                  updatePreview({ avatarShape: 'circle' });
+                  await saveSettings({ avatarShape: 'circle' });
+                }}
+                className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-sm font-bold transition-all hover:scale-105 ${settings.avatarShape === 'circle' ? 'border-pink-500 bg-pink-50 shadow-sm' : 'border-gray-200 bg-white hover:border-gray-300'}`}
+              >
+                O
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  updateSettings({ avatarShape: 'rectangle' });
+                  updatePreview({ avatarShape: 'rectangle' });
+                  await saveSettings({ avatarShape: 'rectangle' });
+                }}
+                className={`w-8 h-8 rounded-lg border-2 flex items-center justify-center text-sm font-bold transition-all hover:scale-105 ${settings.avatarShape === 'rectangle' ? 'border-pink-500 bg-pink-50 shadow-sm' : 'border-gray-200 bg-white hover:border-gray-300'}`}
+              >
+                ▭
+              </button>
+            </div>
+          </div>
+
+
+          <AvatarUploadWizard
+            open={wizardOpen}
+            onOpenChange={setWizardOpen}
             avatarUrl={settings.avatarImage}
             onUpload={async (url: string) => {
+              console.log('🚀 AvatarUploadWizard onUpload called with URL:', url);
               updateSettings({ avatarImage: url });
-              await saveSettings({ avatarImage: url });
+              updatePreview({ avatarImage: url }); // Sofortiges Preview-Update
+              console.log('🚀 Settings updated, preview should update immediately');
+              // Verzögere saveSettings, damit das Preview sofort sichtbar ist
+              setTimeout(async () => {
+                await saveSettings({ avatarImage: url });
+              }, 100);
             }}
             onDelete={async () => {
               updateSettings({ avatarImage: '' });
-              await saveSettings({ avatarImage: '' });
+              updatePreview({ avatarImage: '' }); // Sofortiges Preview-Update
+              // Verzögere saveSettings, damit das Preview sofort sichtbar ist
+              setTimeout(async () => {
+                await saveSettings({ avatarImage: '' });
+              }, 100);
             }}
-            shape={settings.avatarShape}
             userId={userId}
+            initialShape={settings.avatarShape}
+            initialBorderColor={settings.avatarBorderColor}
           />
-        </div>
-      </div>
-      {/* Darunter: Randfarbe und Form */}
-      <div className="flex flex-row gap-6 items-center mt-8">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Randfarbe</label>
-          <div className="flex gap-3 items-center">
-            <ColorPicker 
-              value={settings.avatarBorderColor || '#e5e7eb'}
-              onChange={async color => {
-                updateSettings({ avatarBorderColor: color });
-                updatePreview({ avatarBorderColor: color });
-                await saveSettings({ avatarBorderColor: color });
-              }}
-              variant="bubble"
-              size="lg"
-            />
-            <div className="flex gap-2 mt-2">
-              {AVATAR_BORDER_COLORS.map(color => (
-                    <button
-                      key={color}
-                  type="button"
-                  onClick={async () => {
-                    updateSettings({ avatarBorderColor: color });
-                    updatePreview({ avatarBorderColor: color });
-                    await saveSettings({ avatarBorderColor: color });
-                  }}
-                  className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all duration-150 ${settings.avatarBorderColor === color ? 'border-blue-500' : 'border-gray-200'}`}
-                  style={{ background: color }}
-                >
-                  {settings.avatarBorderColor === color && <span className="block w-3 h-3 rounded-full bg-white border border-black shadow-sm" />}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Format</label>
-          <div className="flex gap-2">
-            <button type="button" onClick={async () => { updateSettings({ avatarShape: 'circle' }); updatePreview({ avatarShape: 'circle' }); await saveSettings({ avatarShape: 'circle' }); }} className={`w-10 h-10 rounded-full border-2 ${settings.avatarShape === 'circle' ? 'border-pink-500' : 'border-gray-200'}`}></button>
-            <button type="button" onClick={async () => { updateSettings({ avatarShape: 'rectangle' }); updatePreview({ avatarShape: 'rectangle' }); await saveSettings({ avatarShape: 'rectangle' }); }} className={`w-10 h-10 rounded-lg border-2 ${settings.avatarShape === 'rectangle' ? 'border-pink-500' : 'border-gray-200'}`}></button>
-          </div>
         </div>
       </div>
     </div>

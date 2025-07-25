@@ -71,6 +71,14 @@ function getCroppedImg(imageSrc: string, pixelCrop: any): Promise<string> {
   });
 }
 
+// UUID v4 Polyfill (funktioniert überall)
+function uuidv4() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
 export function AvatarUpload({
   avatarUrl,
   onUpload,
@@ -96,6 +104,10 @@ export function AvatarUpload({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [rotation, setRotation] = useState(0);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  // Aspect Ratio Auswahl
+  const [aspect, setAspect] = useState<number>(1); // Default: Quadrat
+  // Vorschau-Format für CSS
+  const aspectClass = aspect === 3 ? 'aspect-[3/1]' : aspect === 2 ? 'aspect-[2/1]' : 'aspect-square';
 
   React.useEffect(() => {
     setPreviewUrl(null);
@@ -172,7 +184,8 @@ export function AvatarUpload({
     try {
       const croppedDataUrl = await getCroppedImgWithRotation(selectedImage, croppedAreaPixels, rotation);
       const croppedBlob = await (await fetch(croppedDataUrl)).blob();
-      const croppedFile = new File([croppedBlob], `avatar_${Date.now()}.jpg`, { type: 'image/jpeg' });
+      // NEU: Dateiname mit userId-Struktur
+      const croppedFile = new File([croppedBlob], `user_${userId}/avatar_${uuidv4()}.jpg`, { type: 'image/jpeg' });
       const uploaded = await startUpload([croppedFile]);
       if (uploaded && uploaded[0]?.url) {
         setPreviewUrl(uploaded[0].url); // Sofortiges Preview
@@ -235,7 +248,7 @@ export function AvatarUpload({
     try {
       // Erzeuge Pfad mit User-Ordner
       const ext = file.name.split('.').pop() || 'jpg';
-      const randomName = `user_${userId}/avatar_${crypto.randomUUID()}.${ext}`;
+      const randomName = `user_${userId}/avatar_${uuidv4()}.${ext}`;
       const renamedFile = new File([file], randomName, { type: file.type });
       const uploaded = await startUpload([renamedFile]);
       if (uploaded && uploaded[0]?.url) {
@@ -254,9 +267,17 @@ export function AvatarUpload({
 
   return (
     <div className="flex flex-col items-center gap-2 w-full">
+      {/* Seitenverhältnis-Auswahl */}
+      <div className="flex gap-2 mb-2 items-center">
+        <span className="text-xs text-gray-500">Seitenverhältnis:</span>
+        <button type="button" onClick={() => setAspect(1)} className={`px-2 py-1 rounded border text-xs font-medium ${aspect === 1 ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-blue-50'}`}>1:1</button>
+        <button type="button" onClick={() => setAspect(3)} className={`px-2 py-1 rounded border text-xs font-medium ${aspect === 3 ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-blue-50'}`}>3:1</button>
+        <button type="button" onClick={() => setAspect(2)} className={`px-2 py-1 rounded border text-xs font-medium ${aspect === 2 ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-blue-50'}`}>2:1</button>
+        <span className="ml-2 text-xs text-gray-400">Für Firmenlogos empfehlen wir 3:1 oder 2:1</span>
+      </div>
       <div
         {...getRootProps()}
-        className={`relative group w-32 h-32 ${shape === 'circle' ? 'rounded-full' : 'rounded-lg'} border-2 border-dashed flex items-center justify-center bg-gray-100 cursor-pointer transition-all ${isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}`}
+        className={`relative group w-32 ${aspectClass} ${shape === 'circle' ? 'rounded-full' : 'rounded-lg'} border-2 border-dashed flex items-center justify-center bg-gray-100 cursor-pointer transition-all ${isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}`}
         tabIndex={0}
         onClick={handleAvatarClick}
         aria-label="Avatar hochladen"
@@ -266,6 +287,7 @@ export function AvatarUpload({
             src={previewUrl || avatarUrl}
             alt="Avatar"
             className={`w-full h-full object-cover ${shape === 'circle' ? 'rounded-full' : 'rounded-lg'}`}
+            style={aspect !== 1 ? { aspectRatio: `${aspect}/1` } : {}}
           />
         ) : (
           <Camera className="w-16 h-16 text-gray-400" />
@@ -302,12 +324,12 @@ export function AvatarUpload({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
           <div className="bg-white rounded-lg shadow-lg p-6 w-[350px] max-w-[90vw] max-h-[90vh] overflow-auto">
             <h3 className="text-lg font-semibold mb-2">Avatar zuschneiden</h3>
-            <div className={`relative w-56 h-56 bg-gray-100 overflow-hidden mb-4 mx-auto ${shape === 'circle' ? 'rounded-full' : 'rounded-lg'}`}>
+            <div className={`relative w-56 ${aspect === 3 ? 'aspect-[3/1]' : aspect === 2 ? 'aspect-[2/1]' : 'aspect-square'} bg-gray-100 overflow-hidden mb-4 mx-auto ${shape === 'circle' ? 'rounded-full' : 'rounded-lg'}`}>
               <Cropper
                 image={selectedImage}
                 crop={crop}
                 zoom={zoom}
-                aspect={1}
+                aspect={aspect}
                 cropShape={shape === 'circle' ? 'round' : 'rect'}
                 showGrid={true}
                 onCropChange={setCrop}

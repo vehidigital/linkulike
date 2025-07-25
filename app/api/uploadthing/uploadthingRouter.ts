@@ -143,37 +143,60 @@ export const uploadRouter = {
     }),
     
   background: f({ image: { maxFileSize: '8MB', maxFileCount: 1 } })
-    .middleware(async () => {
+    .middleware(async ({ req, files }) => {
       console.log('=== UPLOADTHING BACKGROUND MIDDLEWARE CALLED ===');
-      
+      let user = null;
+      let userEmail = null;
+      let userId = null;
+      let currentBackgroundUrl = null;
+
+      // 1. Versuche Session
       const session = await getServerSession(authOptions);
-      if (!session?.user?.email) {
-        throw new Error('Unauthorized');
+      if (session?.user?.email) {
+        user = await prisma.user.findUnique({
+          where: { email: session.user.email },
+          select: { id: true, email: true, backgroundImageUrl: true }
+        });
+        if (user) {
+          userId = user.id;
+          userEmail = user.email;
+          currentBackgroundUrl = user.backgroundImageUrl;
+        }
       }
-      
-      const user = await prisma.user.findUnique({
-        where: { email: session.user.email },
-        select: { id: true, backgroundImageUrl: true }
-      });
-      
+
+      // 2. Fallback: userId aus Dateiname extrahieren (z.B. user_xxx/)
+      if (!user && files && files.length > 0) {
+        const file = files[0];
+        // Dateiname: user_xxx/background_...
+        const match = file.name.match(/^user_([\w-]+)\//);
+        if (match && match[1]) {
+          userId = match[1];
+          user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { id: true, email: true, backgroundImageUrl: true }
+          });
+          if (user) {
+            userEmail = user.email;
+            currentBackgroundUrl = user.backgroundImageUrl;
+          }
+        }
+      }
+
       if (!user) {
-        throw new Error('User not found');
+        throw new Error('Unauthorized (no session and no valid userId in filename)');
       }
-      
+
       console.log('=== UPLOADTHING BACKGROUND MIDDLEWARE END ===');
-      return { 
-        userId: user.id, 
-        userEmail: session.user.email,
-        currentBackgroundUrl: user.backgroundImageUrl 
+      return {
+        userId,
+        userEmail,
+        currentBackgroundUrl
       };
     })
     .onUploadComplete(async ({ file, metadata }) => {
       console.log('=== UPLOADTHING BACKGROUND UPLOAD COMPLETE ===');
-      
       try {
-        // Use the original URL from UploadThing - no need to manipulate it
         const newUrl = file.ufsUrl;
-        
         // Delete old background if exists
         if (metadata.currentBackgroundUrl) {
           try {
@@ -186,26 +209,32 @@ export const uploadRouter = {
             console.log('Could not delete old background:', deleteError);
           }
         }
-        
-        // CRITICAL FIX: Update the database with the new background URL
+        // Update DB: Fallback auf userId, wenn userEmail fehlt
         try {
-          await prisma.user.update({
-            where: { email: metadata.userEmail },
-            data: { 
-              backgroundImageUrl: newUrl,
-              backgroundImageActive: true
-            }
-          });
+          if (metadata.userEmail) {
+            await prisma.user.update({
+              where: { email: metadata.userEmail },
+              data: {
+                backgroundImageUrl: newUrl,
+                backgroundImageActive: true
+              }
+            });
+          } else if (metadata.userId) {
+            await prisma.user.update({
+              where: { id: metadata.userId },
+              data: {
+                backgroundImageUrl: newUrl,
+                backgroundImageActive: true
+              }
+            });
+          }
           console.log('Database updated with new background URL:', newUrl);
         } catch (dbError) {
           console.error('Failed to update database with new background URL:', dbError);
-          // Don't fail the upload if database update fails
         }
-        
         const result = { url: newUrl, key: file.key };
         console.log('Uploadthing Backend: Returning result:', result);
         console.log('=== UPLOADTHING BACKGROUND UPLOAD COMPLETE END ===');
-        
         return result;
       } catch (error) {
         console.error('Error processing background upload:', error);

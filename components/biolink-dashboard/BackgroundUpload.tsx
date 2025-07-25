@@ -5,6 +5,14 @@ import type { UploadRouter } from '@/app/api/uploadthing/uploadthingRouter';
 const { useUploadThing } = generateReactHelpers<UploadRouter>();
 import { Loader2, Image as ImageIcon, X } from 'lucide-react';
 
+// UUID v4 Polyfill (funktioniert überall)
+function uuidv4() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
 export const BackgroundUpload = ({
   backgroundUrl,
   onUpload,
@@ -25,9 +33,9 @@ export const BackgroundUpload = ({
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  React.useEffect(() => {
-    setPreviewUrl(null);
-  }, [backgroundUrl]);
+  // React.useEffect(() => {
+  //   setPreviewUrl(null);
+  // }, [backgroundUrl]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -37,7 +45,7 @@ export const BackgroundUpload = ({
     try {
       // Erzeuge Pfad mit User-Ordner
       const ext = file.name.split('.').pop() || 'jpg';
-      const randomName = `user_${userId}/background_${crypto.randomUUID()}.${ext}`;
+      const randomName = `user_${userId}/background_${uuidv4()}.${ext}`;
       const renamedFile = new File([file], randomName, { type: file.type });
       const uploaded = await startUpload([renamedFile]);
       if (uploaded && uploaded[0]?.url) {
@@ -47,7 +55,13 @@ export const BackgroundUpload = ({
         setTimeout(() => setSuccess(false), 1500);
       }
     } catch (e) {
-      setError('Fehler beim Upload');
+      // NEU: Fehler ausführlich loggen
+      console.error('Fehler beim Upload:', e);
+      if (e instanceof Error) {
+        setError('Fehler beim Upload: ' + e.message);
+      } else {
+        setError('Fehler beim Upload');
+      }
     } finally {
       setLoading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';

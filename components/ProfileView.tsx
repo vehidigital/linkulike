@@ -108,7 +108,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ userData, links, socia
         <div className="flex flex-col items-center w-full px-6 pt-10 pb-4">
           <Avatar className={`w-24 h-24 mb-4 ${settings?.avatarShape === 'circle' ? 'rounded-full' : 'rounded-lg'}`}
             style={{ border: `4px solid ${settings?.avatarBorderColor || '#ffffff'}` }}>
-            <AvatarImage src={userData?.avatarUrl || settings?.avatarImage} />
+            <AvatarImage src={settings?.avatarImage || userData?.avatarUrl} />
             <AvatarFallback className="bg-white flex items-center justify-center">
               <User className="w-12 h-12 text-gray-400" />
             </AvatarFallback>
