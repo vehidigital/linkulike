@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { utapi } from "@/lib/uploadthing-server";
+import { UTApi } from "uploadthing/server";
+const utapi = new UTApi();
 
 export async function POST(request: NextRequest) {
   try {

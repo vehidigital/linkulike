@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { useDesign } from "./DesignContext";
-import { UploadAvatar, UploadBackground } from "./UploadComponents";
+import { AvatarUpload } from "./AvatarUpload";
 import { themeTemplates, applyThemeToSettings } from "@/lib/theme-templates";
 import { Play, Check, X, Camera, Palette, User, Edit2, Loader2, CheckCircle2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +16,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ColorPicker } from "@/components/ui/color-picker";
 import { ThemePhonePreview } from './ThemePhonePreview';
+import { BackgroundUpload } from "./BackgroundUpload";
+import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useParams } from 'next/navigation';
 const AVATAR_BORDER_COLORS = [
   '#000000', '#ffffff', '#f59e0b', '#3b82f6', '#ef4444', '#10b981', '#8b5cf6', '#ec4899'
 ];
@@ -25,6 +28,8 @@ const AVATAR_BORDER_COLORS = [
 
 export function ProfileCard() {
   const { settings, updateSettings, updatePreview, resetPreview, saveSettings } = useDesign();
+  const params = useParams();
+  const userId = params.userId as string;
   
   // Local state for editing
   const [isEditingName, setIsEditingName] = useState(false);
@@ -199,16 +204,19 @@ export function ProfileCard() {
         </div>
         {/* Rechte Seite: Avatar Upload */}
         <div className="flex flex-col items-center gap-4">
-          <label htmlFor="avatar-upload" className="cursor-pointer">
-            <div className={`w-32 h-32 ${settings.avatarShape === 'circle' ? 'rounded-full' : 'rounded-lg'} flex items-center justify-center bg-gray-100 border-2 border-dashed border-gray-300`}> 
-              {settings.avatarImage ? (
-                <img src={settings.avatarImage} alt="Avatar" className={`w-full h-full object-cover ${settings.avatarShape === 'circle' ? 'rounded-full' : 'rounded-lg'}`} />
-              ) : (
-                <Camera className="w-16 h-16 text-gray-400" />
-              )}
-            </div>
-            <input id="avatar-upload" type="file" accept="image/*" className="hidden" />
-          </label>
+          <AvatarUpload
+            avatarUrl={settings.avatarImage}
+            onUpload={async (url: string) => {
+              updateSettings({ avatarImage: url });
+              await saveSettings({ avatarImage: url });
+            }}
+            onDelete={async () => {
+              updateSettings({ avatarImage: '' });
+              await saveSettings({ avatarImage: '' });
+            }}
+            shape={settings.avatarShape}
+            userId={userId}
+          />
         </div>
       </div>
       {/* Darunter: Randfarbe und Form */}
@@ -270,6 +278,11 @@ const ImageIcon = () => (
 
 export function BackgroundCard() {
   const { settings, updateSettings, updatePreview, saveSettings } = useDesign();
+  const [modalOpen, setModalOpen] = useState(false);
+  const backgroundUploadRef = useRef<any>(null);
+  const params = useParams();
+  const userId = params.userId as string;
+  // Entferne shouldOpenDialog und isDialogOpen
 
   // Color state
   const color = settings.backgroundColor || '#1e3a8a';
@@ -322,24 +335,68 @@ export function BackgroundCard() {
         {/* Color Card */}
         <div 
           className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${settings.backgroundType === 'color' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
-          onClick={() => handleUpdate({ backgroundType: 'color', backgroundImage: '' })}
+          onClick={async () => {
+            updateSettings({ backgroundType: 'color' });
+            await saveSettings({ backgroundType: 'color' });
+          }}
         >
           <div className="w-full h-16 flex items-center justify-center mb-2">
             <PaletteIcon />
           </div>
           <div className="text-sm font-medium text-center">Color</div>
         </div>
-
-        {/* Image Card */}
-        <div 
-          className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${settings.backgroundType === 'image' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
-          onClick={() => handleUpdate({ backgroundType: 'image' })}
-        >
-          <div className="w-full h-16 flex items-center justify-center mb-2">
-            <ImageIcon />
-          </div>
-          <div className="text-sm font-medium text-center">Image</div>
-        </div>
+        {/* Image Card als DialogTrigger, keine kleinen Icons mehr */}
+        <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+          <DialogTrigger asChild>
+            <div
+              className={`p-0 rounded-lg border-2 cursor-pointer transition-all relative overflow-hidden flex flex-col justify-end ${settings.backgroundType === 'image' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
+              style={{ minHeight: 96 }}
+              onClick={async () => {
+                updateSettings({ backgroundType: 'image' });
+                await saveSettings({ backgroundType: 'image' });
+              }}
+            >
+              {/* Bild als Card-Background */}
+              {settings.backgroundImage ? (
+                <img
+                  src={settings.backgroundImage}
+                  alt="Background"
+                  className="absolute inset-0 w-full h-full object-cover rounded-lg"
+                  style={{ zIndex: 1 }}
+                />
+              ) : (
+                <div className="w-full h-24 flex items-center justify-center" style={{ zIndex: 1 }}>
+                  <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, color: '#9ca3af' }}>
+                    <ImageIcon />
+                  </span>
+                </div>
+              )}
+              <div className="relative z-10 w-full h-8 flex items-end justify-center pb-1">
+                <span className="text-sm font-medium text-center bg-white/80 rounded px-2 py-0.5">Image</span>
+              </div>
+            </div>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl w-full">
+            <DialogHeader>
+              <DialogTitle>Hintergrundbild ändern</DialogTitle>
+            </DialogHeader>
+            <BackgroundUpload
+              backgroundUrl={settings.backgroundImage}
+              onUpload={async (url: string) => {
+                updateSettings({ backgroundType: 'image', backgroundImage: url });
+                await saveSettings({ backgroundType: 'image', backgroundImage: url });
+                // Modal wird jetzt über onClose in BackgroundUpload geschlossen
+              }}
+              onDelete={async () => {
+                updateSettings({ backgroundImage: '' });
+                await saveSettings({ backgroundImage: '' });
+                // Modal wird jetzt über onClose in BackgroundUpload geschlossen
+              }}
+              shape="rectangle"
+              userId={userId}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Color Bubbles */}
@@ -374,17 +431,6 @@ export function BackgroundCard() {
             />
           ))}
         </div>
-      )}
-
-      {/* Image Content */}
-      {settings.backgroundType === 'image' && (
-        <UploadBackground onUploadComplete={(url) => {
-          if (!url) {
-            // Wenn Bild gelöscht wird, automatisch auf Farbe zurückschalten
-            handleUpdate({ backgroundType: 'color' });
-          }
-          console.log('Background uploaded:', url);
-        }} />
       )}
     </div>
   );

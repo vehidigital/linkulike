@@ -1,11 +1,12 @@
 import { createUploadthing, type FileRouter } from 'uploadthing/next';
 import { nanoid } from 'nanoid';
-import { utapi } from '@/lib/uploadthing-server';
+import { UTApi } from 'uploadthing/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 
 const f = createUploadthing();
+const utapi = new UTApi();
 
 export const uploadRouter = {
   avatar: f({ image: { maxFileSize: '2MB', maxFileCount: 1 } })

@@ -7,14 +7,14 @@ import { Logo } from './Logo';
 
 function getBackgroundStyle(settings: any) {
   // Helles Standardlayout
-  if (!settings || (!settings.backgroundColor && !settings.backgroundImageUrl)) {
+  if (!settings || (!settings.backgroundColor && !settings.backgroundImage)) {
     return {
       background: '#f4f6fa',
     };
   }
-  if (settings.backgroundImageActive && settings.backgroundImageUrl) {
+  if (settings.backgroundType === 'image' && settings.backgroundImage) {
     return {
-      backgroundImage: `url(${settings.backgroundImageUrl})`,
+      backgroundImage: `url(${settings.backgroundImage})`,
       backgroundSize: 'cover',
       backgroundPosition: 'center',
       backgroundColor: settings.backgroundColor || '#f4f6fa',
@@ -72,36 +72,21 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ userData, links, socia
   const socialsBar = (css: string) => {
     const totalIcons = socials.length;
     if (totalIcons === 0) return null;
-    // Algorithmus für optimale Verteilung auf 2 Reihen
-    let firstRowCount = 0, secondRowCount = 0;
-    if (totalIcons <= 5) {
-      firstRowCount = totalIcons;
-      secondRowCount = 0;
-    } else if (totalIcons === 6) {
-      firstRowCount = 3; secondRowCount = 3;
-    } else if (totalIcons === 7) {
-      firstRowCount = 4; secondRowCount = 3;
-    } else if (totalIcons === 8) {
-      firstRowCount = 4; secondRowCount = 4;
-    } else if (totalIcons === 9) {
-      firstRowCount = 5; secondRowCount = 4;
-    } else {
-      firstRowCount = 5; secondRowCount = totalIcons - 5;
+    // Maximal 4 pro Reihe, dynamisch umbrechen
+    const iconsPerRow = 4;
+    const rows = [];
+    for (let i = 0; i < totalIcons; i += iconsPerRow) {
+      rows.push(socials.slice(i, i + iconsPerRow));
     }
     return (
-      <div className={`w-full px-12 ${css}`}>
-        <div className={`grid justify-center gap-8 mb-4 ${firstRowCount === 1 ? 'grid-cols-1' : firstRowCount === 2 ? 'grid-cols-2' : firstRowCount === 3 ? 'grid-cols-3' : firstRowCount === 4 ? 'grid-cols-4' : 'grid-cols-5'}`}>
-          {socials.slice(0, firstRowCount).map((s: any) => (
-            <SocialIcon key={s.id} url={s.value} network={s.platform} style={{ width: 32, height: 32 }} bgColor="#fff" fgColor="#222" className="bg-white/90 rounded-full p-2 shadow hover:scale-110 transition-transform duration-200 w-11 h-11 flex items-center justify-center" />
-          ))}
-        </div>
-        {secondRowCount > 0 && (
-          <div className={`grid justify-center gap-8 ${secondRowCount === 1 ? 'grid-cols-1' : secondRowCount === 2 ? 'grid-cols-2' : secondRowCount === 3 ? 'grid-cols-3' : secondRowCount === 4 ? 'grid-cols-4' : 'grid-cols-5'}`}>
-            {socials.slice(firstRowCount, firstRowCount + secondRowCount).map((s: any) => (
-              <SocialIcon key={s.id} url={s.value} network={s.platform} style={{ width: 32, height: 32 }} bgColor="#fff" fgColor="#222" className="bg-white/90 rounded-full p-2 shadow hover:scale-110 transition-transform duration-200 w-11 h-11 flex items-center justify-center" />
+      <div className={`w-full flex flex-col items-center gap-2 ${css}`}>
+        {rows.map((row, idx) => (
+          <div key={idx} className={`flex flex-row justify-center gap-4`}>
+            {row.map((s: any) => (
+              <SocialIcon key={s.id} url={s.value} network={s.platform} style={{ width: 36, height: 36 }} bgColor="#fff" fgColor="#222" className="bg-white/90 rounded-full p-2 shadow hover:scale-110 transition-transform duration-200 flex items-center justify-center" />
             ))}
           </div>
-        )}
+        ))}
       </div>
     );
   };
